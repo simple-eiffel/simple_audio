@@ -26,6 +26,7 @@ SIMPLE_AUDIO provides low-latency audio playback and recording using WASAPI. Fea
 - **Device enumeration** - List input/output devices with names and IDs
 - **Stream creation** - Create playback or recording streams
 - **Audio buffers** - PCM data with 8/16/24/32-bit sample support
+- **WAV file loading** - Load audio from WAV files (PCM format)
 - **Sine wave generation** - Built-in test signal generation
 
 Uses inline C externals - no external DLLs required.
@@ -49,6 +50,25 @@ do
     end
 
     audio.dispose
+end
+```
+
+## Loading WAV Files
+
+```eiffel
+local
+    buffer: AUDIO_BUFFER
+do
+    -- Load audio from WAV file
+    create buffer.make_from_wav ("sound.wav")
+
+    if buffer.is_valid then
+        print ("Loaded: " + buffer.duration.out + " seconds%N")
+        print ("Sample rate: " + buffer.sample_rate.out + " Hz%N")
+        print ("Channels: " + buffer.channels.out + "%N")
+    else
+        print ("Error: " + buffer.last_error + "%N")
+    end
 end
 ```
 
@@ -193,17 +213,23 @@ set SIMPLE_EIFFEL=D:\prod
 | Method | Description |
 |--------|-------------|
 | `make (frames, channels, bits)` | Create buffer |
+| `make_from_wav (path)` | Load from WAV file |
 | `sample_at (frame, channel)` | Get sample (-1.0 to 1.0) |
 | `set_sample (frame, channel, value)` | Set sample |
 | `fill_sine_wave (freq, rate)` | Generate sine wave |
 | `fill_silence` | Zero all samples |
 | `clear` | Same as fill_silence |
+| `is_valid` | True if load succeeded |
+| `last_error` | Error message if failed |
+| `sample_rate` | Sample rate in Hz |
+| `duration` | Duration in seconds |
 
 ## Supported Formats
 
 - **Sample rates**: Any (common: 44100, 48000, 96000)
 - **Channels**: 1-8 (mono, stereo, surround)
 - **Bit depths**: 8, 16, 24, 32 (PCM)
+- **WAV files**: PCM format only (no compression)
 
 ## Platform Support
 

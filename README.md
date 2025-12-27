@@ -28,7 +28,7 @@ SIMPLE_AUDIO provides low-latency audio playback and recording using WASAPI. Fea
 - **Audio buffers** - PCM data with 8/16/24/32-bit sample support
 - **Sine wave generation** - Built-in test signal generation
 
-Uses the Eric Bezault inline C pattern - no external DLLs required.
+Uses inline C externals - no external DLLs required.
 
 ## Quick Start
 

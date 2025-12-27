@@ -146,7 +146,7 @@ set SIMPLE_EIFFEL=D:\prod
 ## Dependencies
 
 - simple_file (file operations)
-- WEL (Windows Eiffel Library for MANAGED_POINTER)
+- EiffelBase (for MANAGED_POINTER)
 - ole32.lib, uuid.lib (Windows system libraries, linked automatically)
 
 ## API Reference

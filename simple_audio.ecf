@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-22-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-22-0 http://www.eiffel.com/developers/xml/configuration-1-22-0.xsd" name="simple_audio" uuid="B2B574E2-F225-4CCF-91C2-1E7879854A14" library_target="simple_audio">
+	<description>Real-time audio I/O library for Eiffel (WASAPI)</description>
+	<target name="simple_audio">
+		<root all_classes="true"/>
+		<file_rule>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/\.git$</exclude>
+			<exclude>/\.svn$</exclude>
+			<exclude>/testing$</exclude>
+		</file_rule>
+		<option warning="warning" syntax="provisional" manifest_array_type="mismatch_warning">
+			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
+		</option>
+		<setting name="console_application" value="true"/>
+		<setting name="dead_code_removal" value="feature"/>
+		<capability>
+			<concurrency support="scoop" use="scoop"/>
+			<void_safety support="all" use="all"/>
+		</capability>
+		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf"/>
+		<library name="wel" location="$ISE_LIBRARY/library/wel/wel.ecf"/>
+		<library name="simple_file" location="$SIMPLE_EIFFEL/simple_file/simple_file.ecf"/>
+		<cluster name="src" location="./src/" recursive="true"/>
+		<external_include location="$SIMPLE_EIFFEL/simple_audio/Clib">
+			<description>Local C bridge header</description>
+		</external_include>
+		<external_library location="ole32.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_library>
+		<external_library location="uuid.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_library>
+	</target>
+	<target name="simple_audio_tests" extends="simple_audio">
+		<root class="TEST_APP" feature="make"/>
+		<file_rule>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/\.git$</exclude>
+			<exclude>/\.svn$</exclude>
+		</file_rule>
+		<library name="simple_testing" location="$SIMPLE_EIFFEL/simple_testing/simple_testing.ecf"/>
+		<cluster name="testing" location="./testing/" recursive="true"/>
+	</target>
+</system>

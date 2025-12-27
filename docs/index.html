@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_audio - Real-time Audio I/O for Eiffel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_audio</h1>
+        <p class="tagline">Real-time Audio I/O for Eiffel</p>
+        <div class="badges">
+            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-license">MIT</span>
+            <span class="badge">Windows</span>
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#playback">Playback</a></li>
+            <li><a href="#recording">Recording</a></li>
+            <li><a href="#buffers">Buffers</a></li>
+            <li><a href="#api-reference">API Reference</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_audio">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>
+                <strong>simple_audio</strong> provides real-time audio input and output
+                for Eiffel applications using Windows Audio Session API (WASAPI).
+                Features device enumeration, low-latency streaming, and PCM buffer handling.
+            </p>
+        </section>
+
+        <section id="quick-start">
+            <h2>Quick Start</h2>
+<pre><code><span class="keyword">local</span>
+    audio: <span class="type">SIMPLE_AUDIO</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> audio.make
+
+    <span class="comment">-- List output devices</span>
+    <span class="keyword">across</span> audio.output_devices <span class="keyword">as</span> d <span class="keyword">loop</span>
+        print (d.display_name + <span class="string">"%N"</span>)
+    <span class="keyword">end</span>
+
+    audio.dispose
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="playback">
+            <h2>Audio Playback</h2>
+<pre><code><span class="keyword">local</span>
+    audio: <span class="type">SIMPLE_AUDIO</span>
+    buffer: <span class="type">AUDIO_BUFFER</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> audio.make
+
+    <span class="keyword">if</span> <span class="keyword">attached</span> audio.default_output <span class="keyword">as</span> dev <span class="keyword">then</span>
+        <span class="keyword">if</span> <span class="keyword">attached</span> audio.create_output_stream (dev, 44100, 2, 16) <span class="keyword">as</span> stream <span class="keyword">then</span>
+            <span class="comment">-- Create 1-second sine wave</span>
+            <span class="keyword">create</span> buffer.make (44100, 2, 16)
+            buffer.fill_sine_wave (440.0, 44100)
+
+            stream.start
+            stream.write (buffer)
+            stream.stop
+            stream.close
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="recording">
+            <h2>Audio Recording</h2>
+<pre><code><span class="keyword">local</span>
+    audio: <span class="type">SIMPLE_AUDIO</span>
+    buffer: <span class="type">AUDIO_BUFFER</span>
+<span class="keyword">do</span>
+    <span class="keyword">create</span> audio.make
+
+    <span class="keyword">if</span> <span class="keyword">attached</span> audio.default_input <span class="keyword">as</span> dev <span class="keyword">then</span>
+        <span class="keyword">if</span> <span class="keyword">attached</span> audio.create_input_stream (dev, 44100, 2, 16) <span class="keyword">as</span> stream <span class="keyword">then</span>
+            <span class="keyword">create</span> buffer.make (44100, 2, 16)
+
+            stream.start
+            stream.read (buffer)
+            stream.stop
+            stream.close
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="buffers">
+            <h2>Working with Buffers</h2>
+<pre><code><span class="keyword">local</span>
+    buffer: <span class="type">AUDIO_BUFFER</span>
+<span class="keyword">do</span>
+    <span class="comment">-- Create stereo 16-bit buffer</span>
+    <span class="keyword">create</span> buffer.make (1024, 2, 16)
+
+    <span class="comment">-- Set sample (-1.0 to 1.0)</span>
+    buffer.set_sample (0, 0, 0.5)
+
+    <span class="comment">-- Get sample</span>
+    print (buffer.sample_at (0, 0).out)
+
+    <span class="comment">-- Generate test tone</span>
+    buffer.fill_sine_wave (440.0, 44100)
+<span class="keyword">end</span></code></pre>
+        </section>
+
+        <section id="api-reference">
+            <h2>API Reference</h2>
+
+            <h3>SIMPLE_AUDIO</h3>
+            <table>
+                <tr><th>Method</th><th>Description</th></tr>
+                <tr><td><code>output_devices</code></td><td>All output devices</td></tr>
+                <tr><td><code>input_devices</code></td><td>All input devices</td></tr>
+                <tr><td><code>default_output</code></td><td>Default output device</td></tr>
+                <tr><td><code>default_input</code></td><td>Default input device</td></tr>
+                <tr><td><code>create_output_stream</code></td><td>Create playback stream</td></tr>
+                <tr><td><code>create_input_stream</code></td><td>Create recording stream</td></tr>
+                <tr><td><code>refresh</code></td><td>Re-enumerate devices</td></tr>
+            </table>
+
+            <h3>AUDIO_STREAM</h3>
+            <table>
+                <tr><th>Method</th><th>Description</th></tr>
+                <tr><td><code>start</code></td><td>Begin streaming</td></tr>
+                <tr><td><code>stop</code></td><td>Stop streaming</td></tr>
+                <tr><td><code>write (buffer)</code></td><td>Write audio data</td></tr>
+                <tr><td><code>read (buffer)</code></td><td>Read audio data</td></tr>
+                <tr><td><code>close</code></td><td>Release stream</td></tr>
+            </table>
+
+            <h3>AUDIO_BUFFER</h3>
+            <table>
+                <tr><th>Method</th><th>Description</th></tr>
+                <tr><td><code>make (frames, channels, bits)</code></td><td>Create buffer</td></tr>
+                <tr><td><code>sample_at (frame, channel)</code></td><td>Get sample</td></tr>
+                <tr><td><code>set_sample (frame, channel, value)</code></td><td>Set sample</td></tr>
+                <tr><td><code>fill_sine_wave (freq, rate)</code></td><td>Generate sine</td></tr>
+                <tr><td><code>clear</code></td><td>Zero buffer</td></tr>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>Part of the <a href="https://github.com/simple-eiffel">Simple Eiffel</a> ecosystem.</p>
+    </footer>
+</body>
+</html>

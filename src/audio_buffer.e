@@ -313,6 +313,66 @@ feature -- Element change
 			end
 		end
 
+feature -- Export
+
+	save_to_wav (a_path: READABLE_STRING_GENERAL): BOOLEAN
+			-- Save buffer to WAV file. Returns True on success.
+		require
+			path_not_empty: not a_path.is_empty
+			is_valid: is_valid
+		local
+			l_file: RAW_FILE
+			l_header: MANAGED_POINTER
+			l_data_size: INTEGER
+		do
+			l_data_size := byte_count
+
+			create l_file.make_create_read_write (a_path.to_string_8)
+			if l_file.is_open_write then
+				create l_header.make (44)
+
+				-- RIFF header
+				l_header.put_natural_8 (('R').code.as_natural_8, 0)
+				l_header.put_natural_8 (('I').code.as_natural_8, 1)
+				l_header.put_natural_8 (('F').code.as_natural_8, 2)
+				l_header.put_natural_8 (('F').code.as_natural_8, 3)
+				l_header.put_integer_32_le (36 + l_data_size, 4)
+				l_header.put_natural_8 (('W').code.as_natural_8, 8)
+				l_header.put_natural_8 (('A').code.as_natural_8, 9)
+				l_header.put_natural_8 (('V').code.as_natural_8, 10)
+				l_header.put_natural_8 (('E').code.as_natural_8, 11)
+
+				-- fmt chunk
+				l_header.put_natural_8 (('f').code.as_natural_8, 12)
+				l_header.put_natural_8 (('m').code.as_natural_8, 13)
+				l_header.put_natural_8 (('t').code.as_natural_8, 14)
+				l_header.put_natural_8 ((' ').code.as_natural_8, 15)
+				l_header.put_integer_32_le (16, 16)  -- chunk size
+				l_header.put_integer_16_le (1, 20)   -- PCM format
+				l_header.put_integer_16_le (channels.as_integer_16, 22)
+				l_header.put_integer_32_le (sample_rate, 24)
+				l_header.put_integer_32_le (sample_rate * bytes_per_frame, 28)  -- byte rate
+				l_header.put_integer_16_le (bytes_per_frame.as_integer_16, 32)  -- block align
+				l_header.put_integer_16_le (bits_per_sample.as_integer_16, 34)
+
+				-- data chunk
+				l_header.put_natural_8 (('d').code.as_natural_8, 36)
+				l_header.put_natural_8 (('a').code.as_natural_8, 37)
+				l_header.put_natural_8 (('t').code.as_natural_8, 38)
+				l_header.put_natural_8 (('a').code.as_natural_8, 39)
+				l_header.put_integer_32_le (l_data_size, 40)
+
+				-- Write header
+				l_file.put_managed_pointer (l_header, 0, 44)
+
+				-- Write audio data
+				l_file.put_managed_pointer (data, 0, l_data_size)
+
+				l_file.close
+				Result := True
+			end
+		end
+
 feature -- Generation
 
 	fill_sine_wave (a_frequency: REAL_64; a_sample_rate: INTEGER)

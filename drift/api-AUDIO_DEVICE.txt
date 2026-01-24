@@ -1,69 +1,51 @@
 note
 	description: "[
-				SIMPLE_AUDIO - Real-time Audio I/O Library for Eiffel
+				AUDIO_DEVICE - Audio Device Information
 		
-				Main facade for Windows Audio Session API (WASAPI) access.
-				Provides device enumeration, audio streaming, and high-level
-				playback/recording capabilities.
+				Represents a single audio endpoint (speaker, microphone, etc.)
+				from the Windows Audio Session API.
 		
-				Simple Usage (90% of use cases):
-					audio: SIMPLE_AUDIO
-					create audio.make
+				Query device properties like name and ID.
+				Control volume and monitor peak levels.
 		
-					-- One-liner playback!
-					audio.play ("music.wav")
+				Usage:
+					device: AUDIO_DEVICE
 		
-					-- One-liner recording!
-					audio.record ("output.wav", 5.0)  -- 5 seconds
+					-- Get volume (0.0 to 1.0)
+					print (device.volume.out + "%%N")
 		
-				Advanced Usage:
-					-- List output devices
-					across audio.output_devices as d loop
-						print (d.name + " vol:" + d.volume.out + "%%N")
-					end
+					-- Set volume
+					device.set_volume (0.75)
 		
-					-- Volume control
-					if attached audio.default_output as dev then
-						dev.set_volume (0.75)
-					end
+					-- Monitor peak level (for VU meters)
+					print (device.peak_level.out + "%%N")
 		
-					-- Create playback stream
-					if attached audio.default_output as dev then
-						if attached audio.create_output_stream (dev, 44100, 2, 16) as stream then
-							stream.start
-							-- write audio data...
-							stream.stop
-						end
-					end
-		
-					-- Player with callbacks
-					if attached audio.create_player as player then
-						player.set_on_finished (agent on_done)
-						player.play_file_async ("sound.wav")
-					end
+					-- Mute/unmute
+					device.mute
+					device.unmute
 	]"
 	author: "Larry Rix"
 	date: "$Date$"
 	revision: "$Revision$"
 
 class interface
-	SIMPLE_AUDIO
+	AUDIO_DEVICE
 
 create 
-	make
-			-- Initialize audio system.
+	make_from_handle (a_handle: POINTER; a_is_output: BOOLEAN)
+			-- Create device from WASAPI handle.
+		require
+			handle_valid: a_handle /= default_pointer
 		ensure
-			initialized: is_initialized
+			handle_set: handle = a_handle
+			direction_set: is_output = a_is_output
+
+	make_empty
+			-- Create empty device for testing.
 
 feature -- Access
 
-	default_input: detachable AUDIO_DEVICE
-			-- Default input device (Void if none).
-
-	default_output: detachable AUDIO_DEVICE
-			-- Default output device (Void if none).
-
-	generating_type: TYPE [detachable SIMPLE_AUDIO]
+	generating_type: TYPE [detachable AUDIO_DEVICE]
 			-- Type of current object
 			-- (type of which it is a direct instance)
 			-- (from ANY)
@@ -78,19 +60,16 @@ feature -- Access
 			generator_not_void: Result /= Void
 			generator_not_empty: not Result.is_empty
 
-	input_device_count: INTEGER_32
-			-- Number of input devices.
+	handle: POINTER
+			-- Native device handle (IMMDevice*).
 
-	input_devices: ARRAYED_LIST [AUDIO_DEVICE]
-			-- All available input (recording) devices.
+	id: STRING_32
+			-- Unique device identifier.
 		ensure
 			result_attached: Result /= Void
 
-	output_device_count: INTEGER_32
-			-- Number of output devices.
-
-	output_devices: ARRAYED_LIST [AUDIO_DEVICE]
-			-- All available output (playback) devices.
+	name: STRING_32
+			-- Friendly name of this device.
 		ensure
 			result_attached: Result /= Void
 	
@@ -115,7 +94,7 @@ feature -- Comparison
 			instance_free: class
 			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.is_equal (b))
 
-	frozen is_deep_equal alias "≡≡≡" (other: SIMPLE_AUDIO): BOOLEAN
+	frozen is_deep_equal alias "≡≡≡" (other: AUDIO_DEVICE): BOOLEAN
 			-- Are `Current` and `other` attached to isomorphic object structures?
 			-- (from ANY)
 		require -- from ANY
@@ -125,7 +104,7 @@ feature -- Comparison
 			same_type: Result implies same_type (other)
 			symmetric: Result implies other.is_deep_equal (Current)
 
-	is_equal (other: SIMPLE_AUDIO): BOOLEAN
+	is_equal (other: AUDIO_DEVICE): BOOLEAN
 			-- Is `other` attached to an object considered
 			-- equal to current object?
 			-- (from ANY)
@@ -134,6 +113,11 @@ feature -- Comparison
 		ensure -- from ANY
 			symmetric: Result implies other ~ Current
 			consistent: standard_is_equal (other) implies Result
+
+	same_device (other: AUDIO_DEVICE): BOOLEAN
+			-- Is `other` the same physical device?
+		require
+			other_attached: other /= Void
 
 	frozen standard_equal (a: detachable ANY; b: like arg #1): BOOLEAN
 			-- Are `a` and `b` either both void or attached to
@@ -144,7 +128,7 @@ feature -- Comparison
 			instance_free: class
 			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.standard_is_equal (b))
 
-	frozen standard_is_equal alias "≜" (other: SIMPLE_AUDIO): BOOLEAN
+	frozen standard_is_equal alias "≜" (other: AUDIO_DEVICE): BOOLEAN
 			-- Is `other` attached to an object of the same type
 			-- as current object, and field-by-field identical to it?
 			-- (from ANY)
@@ -173,7 +157,7 @@ feature -- Status report
 	
 feature -- Duplication
 
-	copy (other: SIMPLE_AUDIO)
+	copy (other: AUDIO_DEVICE)
 			-- Update current object using fields of object attached
 			-- to `other`, so as to yield equal objects.
 			-- (from ANY)
@@ -183,7 +167,7 @@ feature -- Duplication
 		ensure -- from ANY
 			is_equal: Current ~ other
 
-	frozen deep_copy (other: SIMPLE_AUDIO)
+	frozen deep_copy (other: AUDIO_DEVICE)
 			-- Effect equivalent to that of:
 			--		`copy` (`other` . `deep_twin`)
 			-- (from ANY)
@@ -192,14 +176,14 @@ feature -- Duplication
 		ensure -- from ANY
 			deep_equal: deep_equal (Current, other)
 
-	frozen deep_twin: SIMPLE_AUDIO
+	frozen deep_twin: AUDIO_DEVICE
 			-- New object structure recursively duplicated from Current.
 			-- (from ANY)
 		ensure -- from ANY
 			deep_twin_not_void: Result /= Void
 			deep_equal: deep_equal (Current, Result)
 
-	frozen standard_copy (other: SIMPLE_AUDIO)
+	frozen standard_copy (other: AUDIO_DEVICE)
 			-- Copy every field of `other` onto corresponding field
 			-- of current object.
 			-- (from ANY)
@@ -209,7 +193,7 @@ feature -- Duplication
 		ensure -- from ANY
 			is_standard_equal: standard_is_equal (other)
 
-	frozen standard_twin: SIMPLE_AUDIO
+	frozen standard_twin: AUDIO_DEVICE
 			-- New object field-by-field identical to `other`.
 			-- Always uses default copying semantics.
 			-- (from ANY)
@@ -217,7 +201,7 @@ feature -- Duplication
 			standard_twin_not_void: Result /= Void
 			equal: standard_equal (Result, Current)
 
-	frozen twin: SIMPLE_AUDIO
+	frozen twin: AUDIO_DEVICE
 			-- New object equal to `Current`
 			-- `twin` calls `copy`; to change copying/twinning semantics, redefine `copy`.
 			-- (from ANY)
@@ -227,7 +211,7 @@ feature -- Duplication
 	
 feature -- Basic operations
 
-	frozen default: detachable SIMPLE_AUDIO
+	frozen default: detachable AUDIO_DEVICE
 			-- Default value of object's type
 			-- (from ANY)
 
@@ -250,81 +234,12 @@ feature -- Basic operations
 		ensure -- from ANY
 			instance_free: class
 	
-feature -- Cleanup
+feature -- Display
 
-	dispose
-			-- Release audio system resources.
-	
-feature -- High-Level Playback (One-Liners!)
-
-	create_player: detachable AUDIO_PLAYER
-			-- Create player for default output device.
-			-- Returns Void if no output device available.
-
-	create_player_for_device (a_device: AUDIO_DEVICE): AUDIO_PLAYER
-			-- Create player for specific device.
-		require
-			device_valid: a_device /= Void and then a_device.is_valid
-			device_is_output: a_device.is_output
+	display_name: STRING_32
+			-- Formatted display name with direction.
 		ensure
 			result_attached: Result /= Void
-
-	play (a_path: READABLE_STRING_GENERAL)
-			-- Play WAV file synchronously (blocking).
-			-- This is the 90% use case - just play a sound!
-		require
-			path_not_empty: not a_path.is_empty
-
-	play_async (a_path: READABLE_STRING_GENERAL): detachable AUDIO_PLAYER
-			-- Play WAV file asynchronously (non-blocking).
-			-- Returns player for control, or Void on failure.
-			-- Call player.pump regularly to continue playback.
-		require
-			path_not_empty: not a_path.is_empty
-	
-feature -- High-Level Recording (One-Liners!)
-
-	create_recorder: detachable AUDIO_RECORDER
-			-- Create recorder for default input device.
-			-- Returns Void if no input device available.
-
-	create_recorder_for_device (a_device: AUDIO_DEVICE): AUDIO_RECORDER
-			-- Create recorder for specific device.
-		require
-			device_valid: a_device /= Void and then a_device.is_valid
-			device_is_input: a_device.is_input
-		ensure
-			result_attached: Result /= Void
-
-	record (a_path: READABLE_STRING_GENERAL; a_duration: REAL_64)
-			-- Record to WAV file for specified duration.
-			-- This is the 90% use case - just record audio!
-		require
-			path_not_empty: not a_path.is_empty
-			duration_positive: a_duration > 0.0
-	
-feature -- Operations
-
-	create_input_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER_32): detachable AUDIO_STREAM
-			-- Create input stream for device.
-		require
-			device_valid: a_device /= Void
-			device_is_input: a_device.is_input
-			sample_rate_valid: a_sample_rate > 0
-			channels_valid: a_channels > 0 and a_channels <= 8
-			bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
-
-	create_output_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER_32): detachable AUDIO_STREAM
-			-- Create output stream for device.
-		require
-			device_valid: a_device /= Void
-			device_is_output: a_device.is_output
-			sample_rate_valid: a_sample_rate > 0
-			channels_valid: a_channels > 0 and a_channels <= 8
-			bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
-
-	refresh
-			-- Re-enumerate all audio devices.
 	
 feature -- Output
 
@@ -356,6 +271,16 @@ feature -- Output
 		ensure -- from ANY
 			tagged_out_not_void: Result /= Void
 	
+feature -- Peak Level Monitoring
+
+	peak_level: REAL_64
+			-- Current peak audio level (0.0 to 1.0).
+			-- Use for VU meters and audio visualization.
+		require
+			device_valid: is_valid
+		ensure
+			in_range: Result >= 0.0 and Result <= 1.0
+	
 feature -- Platform
 
 	Operating_environment: OPERATING_ENVIRONMENT
@@ -367,16 +292,65 @@ feature -- Platform
 	
 feature -- Status
 
-	is_initialized: BOOLEAN
-			-- Is audio system initialized?
+	is_input: BOOLEAN
+			-- Is this an input (recording) device?
+		ensure
+			opposite: Result = not is_output
+
+	is_output: BOOLEAN
+			-- Is this an output (playback) device?
+
+	is_valid: BOOLEAN
+			-- Is this device handle valid?
+	
+feature -- Volume Control
+
+	is_muted: BOOLEAN
+			-- Is device muted?
+		require
+			device_valid: is_valid
+
+	mute
+			-- Mute the device.
+		require
+			device_valid: is_valid
+		ensure
+			muted: is_muted
+
+	set_volume (a_level: REAL_64)
+			-- Set volume level (0.0 to 1.0).
+		require
+			device_valid: is_valid
+			level_valid: a_level >= 0.0 and a_level <= 1.0
+		ensure
+			volume_set: (volume - a_level).abs < 0.01
+
+	toggle_mute
+			-- Toggle mute state.
+		require
+			device_valid: is_valid
+
+	unmute
+			-- Unmute the device.
+		require
+			device_valid: is_valid
+		ensure
+			not_muted: not is_muted
+
+	volume: REAL_64
+			-- Current volume level (0.0 to 1.0).
+		require
+			device_valid: is_valid
+		ensure
+			in_range: Result >= 0.0 and Result <= 1.0
 	
 invariant
-	output_devices_attached: internal_output_devices /= Void
-	input_devices_attached: internal_input_devices /= Void
+	name_attached: internal_name /= Void
+	id_attached: internal_id /= Void
 
 		-- from ANY
 	reflexive_equality: standard_is_equal (Current)
 	reflexive_conformance: conforms_to (Current)
 
-end -- class SIMPLE_AUDIO
+end -- class AUDIO_DEVICE
 

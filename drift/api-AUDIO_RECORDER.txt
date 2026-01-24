@@ -1,69 +1,71 @@
 note
 	description: "[
-				SIMPLE_AUDIO - Real-time Audio I/O Library for Eiffel
+				AUDIO_RECORDER - High-Level Audio Recording
 		
-				Main facade for Windows Audio Session API (WASAPI) access.
-				Provides device enumeration, audio streaming, and high-level
-				playback/recording capabilities.
+				Simple, high-level audio recording for Eiffel applications.
+				Provides event-driven callbacks for real-time audio processing.
 		
-				Simple Usage (90% of use cases):
-					audio: SIMPLE_AUDIO
-					create audio.make
+				Usage:
+					recorder: AUDIO_RECORDER
 		
-					-- One-liner playback!
-					audio.play ("music.wav")
+					-- Simple recording to file
+					create recorder.make
+					recorder.record_to_file ("output.wav", 5.0)  -- 5 seconds
 		
-					-- One-liner recording!
-					audio.record ("output.wav", 5.0)  -- 5 seconds
+					-- Event-driven recording with callback
+					recorder.set_on_data_available (agent process_audio)
+					recorder.start
+					-- ... do other work ...
+					recorder.stop
+					recorder.buffer.save_to_wav ("output.wav")
 		
-				Advanced Usage:
-					-- List output devices
-					across audio.output_devices as d loop
-						print (d.name + " vol:" + d.volume.out + "%%N")
-					end
-		
-					-- Volume control
-					if attached audio.default_output as dev then
-						dev.set_volume (0.75)
-					end
-		
-					-- Create playback stream
-					if attached audio.default_output as dev then
-						if attached audio.create_output_stream (dev, 44100, 2, 16) as stream then
-							stream.start
-							-- write audio data...
-							stream.stop
-						end
-					end
-		
-					-- Player with callbacks
-					if attached audio.create_player as player then
-						player.set_on_finished (agent on_done)
-						player.play_file_async ("sound.wav")
-					end
+					-- Real-time audio processing
+					recorder.set_on_data_available (agent (buf: AUDIO_BUFFER)
+						do
+							print ("Peak: " + buf.sample_at (0, 0).abs.out + "%%N")
+						end)
 	]"
 	author: "Larry Rix"
 	date: "$Date$"
 	revision: "$Revision$"
 
 class interface
-	SIMPLE_AUDIO
+	AUDIO_RECORDER
 
 create 
 	make
-			-- Initialize audio system.
+			-- Create recorder using default input device.
 		ensure
-			initialized: is_initialized
+			defaults_set: sample_rate = 44100 and channels = 2 and bits_per_sample = 16
+
+	make_with_device (a_device: AUDIO_DEVICE)
+			-- Create recorder for specific device.
+		require
+			device_valid: a_device /= Void and then a_device.is_valid
+			device_is_input: a_device.is_input
+		ensure
+			device_set: device = a_device
 
 feature -- Access
 
-	default_input: detachable AUDIO_DEVICE
-			-- Default input device (Void if none).
+	bits_per_sample: INTEGER_32
+			-- Bits per sample.
 
-	default_output: detachable AUDIO_DEVICE
-			-- Default output device (Void if none).
+	buffer: detachable AUDIO_BUFFER
+			-- Recorded audio data (accumulated).
 
-	generating_type: TYPE [detachable SIMPLE_AUDIO]
+	channels: INTEGER_32
+			-- Number of recording channels.
+
+	device: AUDIO_DEVICE
+			-- Input device for recording.
+
+	duration: REAL_64
+			-- Total recorded duration in seconds.
+		ensure
+			non_negative: Result >= 0.0
+
+	generating_type: TYPE [detachable AUDIO_RECORDER]
 			-- Type of current object
 			-- (type of which it is a direct instance)
 			-- (from ANY)
@@ -78,21 +80,11 @@ feature -- Access
 			generator_not_void: Result /= Void
 			generator_not_empty: not Result.is_empty
 
-	input_device_count: INTEGER_32
-			-- Number of input devices.
+	last_error: STRING_8
+			-- Error message from last operation.
 
-	input_devices: ARRAYED_LIST [AUDIO_DEVICE]
-			-- All available input (recording) devices.
-		ensure
-			result_attached: Result /= Void
-
-	output_device_count: INTEGER_32
-			-- Number of output devices.
-
-	output_devices: ARRAYED_LIST [AUDIO_DEVICE]
-			-- All available output (playback) devices.
-		ensure
-			result_attached: Result /= Void
+	sample_rate: INTEGER_32
+			-- Recording sample rate in Hz.
 	
 feature -- Comparison
 
@@ -115,7 +107,7 @@ feature -- Comparison
 			instance_free: class
 			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.is_equal (b))
 
-	frozen is_deep_equal alias "≡≡≡" (other: SIMPLE_AUDIO): BOOLEAN
+	frozen is_deep_equal alias "≡≡≡" (other: AUDIO_RECORDER): BOOLEAN
 			-- Are `Current` and `other` attached to isomorphic object structures?
 			-- (from ANY)
 		require -- from ANY
@@ -125,7 +117,7 @@ feature -- Comparison
 			same_type: Result implies same_type (other)
 			symmetric: Result implies other.is_deep_equal (Current)
 
-	is_equal (other: SIMPLE_AUDIO): BOOLEAN
+	is_equal (other: AUDIO_RECORDER): BOOLEAN
 			-- Is `other` attached to an object considered
 			-- equal to current object?
 			-- (from ANY)
@@ -144,7 +136,7 @@ feature -- Comparison
 			instance_free: class
 			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.standard_is_equal (b))
 
-	frozen standard_is_equal alias "≜" (other: SIMPLE_AUDIO): BOOLEAN
+	frozen standard_is_equal alias "≜" (other: AUDIO_RECORDER): BOOLEAN
 			-- Is `other` attached to an object of the same type
 			-- as current object, and field-by-field identical to it?
 			-- (from ANY)
@@ -173,7 +165,7 @@ feature -- Status report
 	
 feature -- Duplication
 
-	copy (other: SIMPLE_AUDIO)
+	copy (other: AUDIO_RECORDER)
 			-- Update current object using fields of object attached
 			-- to `other`, so as to yield equal objects.
 			-- (from ANY)
@@ -183,7 +175,7 @@ feature -- Duplication
 		ensure -- from ANY
 			is_equal: Current ~ other
 
-	frozen deep_copy (other: SIMPLE_AUDIO)
+	frozen deep_copy (other: AUDIO_RECORDER)
 			-- Effect equivalent to that of:
 			--		`copy` (`other` . `deep_twin`)
 			-- (from ANY)
@@ -192,14 +184,14 @@ feature -- Duplication
 		ensure -- from ANY
 			deep_equal: deep_equal (Current, other)
 
-	frozen deep_twin: SIMPLE_AUDIO
+	frozen deep_twin: AUDIO_RECORDER
 			-- New object structure recursively duplicated from Current.
 			-- (from ANY)
 		ensure -- from ANY
 			deep_twin_not_void: Result /= Void
 			deep_equal: deep_equal (Current, Result)
 
-	frozen standard_copy (other: SIMPLE_AUDIO)
+	frozen standard_copy (other: AUDIO_RECORDER)
 			-- Copy every field of `other` onto corresponding field
 			-- of current object.
 			-- (from ANY)
@@ -209,7 +201,7 @@ feature -- Duplication
 		ensure -- from ANY
 			is_standard_equal: standard_is_equal (other)
 
-	frozen standard_twin: SIMPLE_AUDIO
+	frozen standard_twin: AUDIO_RECORDER
 			-- New object field-by-field identical to `other`.
 			-- Always uses default copying semantics.
 			-- (from ANY)
@@ -217,7 +209,7 @@ feature -- Duplication
 			standard_twin_not_void: Result /= Void
 			equal: standard_equal (Result, Current)
 
-	frozen twin: SIMPLE_AUDIO
+	frozen twin: AUDIO_RECORDER
 			-- New object equal to `Current`
 			-- `twin` calls `copy`; to change copying/twinning semantics, redefine `copy`.
 			-- (from ANY)
@@ -227,7 +219,7 @@ feature -- Duplication
 	
 feature -- Basic operations
 
-	frozen default: detachable SIMPLE_AUDIO
+	frozen default: detachable AUDIO_RECORDER
 			-- Default value of object's type
 			-- (from ANY)
 
@@ -250,81 +242,32 @@ feature -- Basic operations
 		ensure -- from ANY
 			instance_free: class
 	
-feature -- Cleanup
+feature -- Callbacks
 
-	dispose
-			-- Release audio system resources.
-	
-feature -- High-Level Playback (One-Liners!)
+	on_data_available_action: detachable PROCEDURE [AUDIO_BUFFER]
+			-- Called when new audio data is available.
+			-- The buffer contains the latest chunk of recorded audio.
 
-	create_player: detachable AUDIO_PLAYER
-			-- Create player for default output device.
-			-- Returns Void if no output device available.
-
-	create_player_for_device (a_device: AUDIO_DEVICE): AUDIO_PLAYER
-			-- Create player for specific device.
+	set_on_data_available (a_action: PROCEDURE [AUDIO_BUFFER])
+			-- Set callback for real-time audio data.
 		require
-			device_valid: a_device /= Void and then a_device.is_valid
-			device_is_output: a_device.is_output
+			action_valid: a_action /= Void
 		ensure
-			result_attached: Result /= Void
-
-	play (a_path: READABLE_STRING_GENERAL)
-			-- Play WAV file synchronously (blocking).
-			-- This is the 90% use case - just play a sound!
-		require
-			path_not_empty: not a_path.is_empty
-
-	play_async (a_path: READABLE_STRING_GENERAL): detachable AUDIO_PLAYER
-			-- Play WAV file asynchronously (non-blocking).
-			-- Returns player for control, or Void on failure.
-			-- Call player.pump regularly to continue playback.
-		require
-			path_not_empty: not a_path.is_empty
+			action_set: on_data_available_action = a_action
 	
-feature -- High-Level Recording (One-Liners!)
+feature -- Configuration
 
-	create_recorder: detachable AUDIO_RECORDER
-			-- Create recorder for default input device.
-			-- Returns Void if no input device available.
-
-	create_recorder_for_device (a_device: AUDIO_DEVICE): AUDIO_RECORDER
-			-- Create recorder for specific device.
+	set_format (a_sample_rate, a_channels, a_bits: INTEGER_32)
+			-- Set recording format.
 		require
-			device_valid: a_device /= Void and then a_device.is_valid
-			device_is_input: a_device.is_input
-		ensure
-			result_attached: Result /= Void
-
-	record (a_path: READABLE_STRING_GENERAL; a_duration: REAL_64)
-			-- Record to WAV file for specified duration.
-			-- This is the 90% use case - just record audio!
-		require
-			path_not_empty: not a_path.is_empty
-			duration_positive: a_duration > 0.0
-	
-feature -- Operations
-
-	create_input_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER_32): detachable AUDIO_STREAM
-			-- Create input stream for device.
-		require
-			device_valid: a_device /= Void
-			device_is_input: a_device.is_input
+			not_recording: not is_recording
 			sample_rate_valid: a_sample_rate > 0
 			channels_valid: a_channels > 0 and a_channels <= 8
 			bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
-
-	create_output_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER_32): detachable AUDIO_STREAM
-			-- Create output stream for device.
-		require
-			device_valid: a_device /= Void
-			device_is_output: a_device.is_output
-			sample_rate_valid: a_sample_rate > 0
-			channels_valid: a_channels > 0 and a_channels <= 8
-			bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
-
-	refresh
-			-- Re-enumerate all audio devices.
+		ensure
+			sample_rate_set: sample_rate = a_sample_rate
+			channels_set: channels = a_channels
+			bits_set: bits_per_sample = a_bits
 	
 feature -- Output
 
@@ -365,18 +308,51 @@ feature -- Platform
 			instance_free: class
 			operating_environment_not_void: Result /= Void
 	
+feature -- Processing
+
+	pump
+			-- Process recording - call regularly during recording.
+			-- Reads audio data from device and accumulates in buffer.
+	
+feature -- Recording Operations
+
+	record_to_file (a_path: READABLE_STRING_GENERAL; a_duration: REAL_64)
+			-- Record for specified duration and save to WAV file.
+		require
+			path_not_empty: not a_path.is_empty
+			duration_positive: a_duration > 0.0
+			not_recording: not is_recording
+
+	start
+			-- Start recording.
+		require
+			not_recording: not is_recording
+		ensure
+			recording_or_error: is_recording or has_error
+
+	stop
+			-- Stop recording.
+		ensure
+			stopped: not is_recording
+	
 feature -- Status
 
-	is_initialized: BOOLEAN
-			-- Is audio system initialized?
+	has_error: BOOLEAN
+			-- Did last operation fail?
+
+	is_recording: BOOLEAN
+			-- Is recording in progress?
 	
 invariant
-	output_devices_attached: internal_output_devices /= Void
-	input_devices_attached: internal_input_devices /= Void
+	device_attached: device /= Void
+	last_error_attached: last_error /= Void
+	sample_rate_positive: sample_rate > 0
+	channels_positive: channels > 0
+	bits_valid: bits_per_sample = 8 or bits_per_sample = 16 or bits_per_sample = 24 or bits_per_sample = 32
 
 		-- from ANY
 	reflexive_equality: standard_is_equal (Current)
 	reflexive_conformance: conforms_to (Current)
 
-end -- class SIMPLE_AUDIO
+end -- class AUDIO_RECORDER
 

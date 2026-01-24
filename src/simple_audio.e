@@ -3,15 +3,28 @@ note
 		SIMPLE_AUDIO - Real-time Audio I/O Library for Eiffel
 
 		Main facade for Windows Audio Session API (WASAPI) access.
-		Provides device enumeration and audio streaming capabilities.
+		Provides device enumeration, audio streaming, and high-level
+		playback/recording capabilities.
 
-		Usage:
+		Simple Usage (90% of use cases):
 			audio: SIMPLE_AUDIO
 			create audio.make
 
+			-- One-liner playback!
+			audio.play ("music.wav")
+
+			-- One-liner recording!
+			audio.record ("output.wav", 5.0)  -- 5 seconds
+
+		Advanced Usage:
 			-- List output devices
 			across audio.output_devices as d loop
-				print (d.name + "%N")
+				print (d.name + " vol:" + d.volume.out + "%%N")
+			end
+
+			-- Volume control
+			if attached audio.default_output as dev then
+				dev.set_volume (0.75)
 			end
 
 			-- Create playback stream
@@ -21,6 +34,12 @@ note
 					-- write audio data...
 					stream.stop
 				end
+			end
+
+			-- Player with callbacks
+			if attached audio.create_player as player then
+				player.set_on_finished (agent on_done)
+				player.play_file_async ("sound.wav")
 			end
 	]"
 	author: "Larry Rix"
@@ -108,6 +127,91 @@ feature -- Status
 			-- Is audio system initialized?
 		do
 			Result := c_is_initialized
+		end
+
+feature -- High-Level Playback (One-Liners!)
+
+	play (a_path: READABLE_STRING_GENERAL)
+			-- Play WAV file synchronously (blocking).
+			-- This is the 90% use case - just play a sound!
+		require
+			path_not_empty: not a_path.is_empty
+		local
+			l_player: AUDIO_PLAYER
+		do
+			create l_player.make
+			l_player.play_file (a_path)
+		end
+
+	play_async (a_path: READABLE_STRING_GENERAL): detachable AUDIO_PLAYER
+			-- Play WAV file asynchronously (non-blocking).
+			-- Returns player for control, or Void on failure.
+			-- Call player.pump regularly to continue playback.
+		require
+			path_not_empty: not a_path.is_empty
+		local
+			l_player: AUDIO_PLAYER
+		do
+			create l_player.make
+			l_player.play_file_async (a_path)
+			if not l_player.has_error then
+				Result := l_player
+			end
+		end
+
+	create_player: detachable AUDIO_PLAYER
+			-- Create player for default output device.
+			-- Returns Void if no output device available.
+		do
+			if attached default_output as dev then
+				create Result.make_with_device (dev)
+			end
+		end
+
+	create_player_for_device (a_device: AUDIO_DEVICE): AUDIO_PLAYER
+			-- Create player for specific device.
+		require
+			device_valid: a_device /= Void and then a_device.is_valid
+			device_is_output: a_device.is_output
+		do
+			create Result.make_with_device (a_device)
+		ensure
+			result_attached: Result /= Void
+		end
+
+feature -- High-Level Recording (One-Liners!)
+
+	record (a_path: READABLE_STRING_GENERAL; a_duration: REAL_64)
+			-- Record to WAV file for specified duration.
+			-- This is the 90% use case - just record audio!
+		require
+			path_not_empty: not a_path.is_empty
+			duration_positive: a_duration > 0.0
+		local
+			l_recorder: AUDIO_RECORDER
+		do
+			create l_recorder.make
+			l_recorder.record_to_file (a_path, a_duration)
+		end
+
+	create_recorder: detachable AUDIO_RECORDER
+			-- Create recorder for default input device.
+			-- Returns Void if no input device available.
+		do
+			if attached default_input as dev then
+				create Result.make_with_device (dev)
+			end
+		end
+
+	create_recorder_for_device (a_device: AUDIO_DEVICE): AUDIO_RECORDER
+			-- Create recorder for specific device.
+		require
+			device_valid: a_device /= Void and then a_device.is_valid
+			device_is_input: a_device.is_input
+		do
+			create Result.make_with_device (a_device)
+		ensure
+			result_attached: Result /= Void
 		end
 
 feature -- Operations

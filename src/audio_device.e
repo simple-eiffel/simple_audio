@@ -6,6 +6,23 @@ note
 		from the Windows Audio Session API.
 
 		Query device properties like name and ID.
+		Control volume and monitor peak levels.
+
+		Usage:
+			device: AUDIO_DEVICE
+
+			-- Get volume (0.0 to 1.0)
+			print (device.volume.out + "%%N")
+
+			-- Set volume
+			device.set_volume (0.75)
+
+			-- Monitor peak level (for VU meters)
+			print (device.peak_level.out + "%%N")
+
+			-- Mute/unmute
+			device.mute
+			device.unmute
 	]"
 	author: "Larry Rix"
 	date: "$Date$"
@@ -80,6 +97,88 @@ feature -- Status
 			-- Is this device handle valid?
 		do
 			Result := handle /= default_pointer
+		end
+
+feature -- Volume Control
+
+	volume: REAL_64
+			-- Current volume level (0.0 to 1.0).
+		require
+			device_valid: is_valid
+		do
+			Result := c_get_volume (handle).to_double
+		ensure
+			in_range: Result >= 0.0 and Result <= 1.0
+		end
+
+	set_volume (a_level: REAL_64)
+			-- Set volume level (0.0 to 1.0).
+		require
+			device_valid: is_valid
+			level_valid: a_level >= 0.0 and a_level <= 1.0
+		local
+			l_ignored: INTEGER
+		do
+			l_ignored := c_set_volume (handle, a_level.truncated_to_real)
+		ensure
+			volume_set: (volume - a_level).abs < 0.01
+		end
+
+	is_muted: BOOLEAN
+			-- Is device muted?
+		require
+			device_valid: is_valid
+		do
+			Result := c_get_mute (handle) /= 0
+		end
+
+	mute
+			-- Mute the device.
+		require
+			device_valid: is_valid
+		local
+			l_ignored: INTEGER
+		do
+			l_ignored := c_set_mute (handle, 1)
+		ensure
+			muted: is_muted
+		end
+
+	unmute
+			-- Unmute the device.
+		require
+			device_valid: is_valid
+		local
+			l_ignored: INTEGER
+		do
+			l_ignored := c_set_mute (handle, 0)
+		ensure
+			not_muted: not is_muted
+		end
+
+	toggle_mute
+			-- Toggle mute state.
+		require
+			device_valid: is_valid
+		do
+			if is_muted then
+				unmute
+			else
+				mute
+			end
+		end
+
+feature -- Peak Level Monitoring
+
+	peak_level: REAL_64
+			-- Current peak audio level (0.0 to 1.0).
+			-- Use for VU meters and audio visualization.
+		require
+			device_valid: is_valid
+		do
+			Result := c_get_peak_level (handle).to_double
+		ensure
+			in_range: Result >= 0.0 and Result <= 1.0
 		end
 
 feature -- Comparison
@@ -176,6 +275,41 @@ feature {NONE} -- C externals
 			"C inline use %"audio_bridge.h%""
 		alias
 			"audio_release_device($a_device);"
+		end
+
+	c_get_volume (a_device: POINTER): REAL_32
+		external
+			"C inline use %"audio_bridge.h%""
+		alias
+			"return (EIF_REAL_32)audio_get_device_volume($a_device);"
+		end
+
+	c_set_volume (a_device: POINTER; a_level: REAL_32): INTEGER
+		external
+			"C inline use %"audio_bridge.h%""
+		alias
+			"return (EIF_INTEGER)audio_set_device_volume($a_device, (float)$a_level);"
+		end
+
+	c_get_mute (a_device: POINTER): INTEGER
+		external
+			"C inline use %"audio_bridge.h%""
+		alias
+			"return (EIF_INTEGER)audio_get_device_mute($a_device);"
+		end
+
+	c_set_mute (a_device: POINTER; a_muted: INTEGER): INTEGER
+		external
+			"C inline use %"audio_bridge.h%""
+		alias
+			"return (EIF_INTEGER)audio_set_device_mute($a_device, (int)$a_muted);"
+		end
+
+	c_get_peak_level (a_device: POINTER): REAL_32
+		external
+			"C inline use %"audio_bridge.h%""
+		alias
+			"return (EIF_REAL_32)audio_get_device_peak_level($a_device);"
 		end
 
 invariant

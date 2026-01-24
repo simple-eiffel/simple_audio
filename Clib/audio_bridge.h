@@ -3,6 +3,10 @@
  *
  * Provides Windows Audio Session API access for Eiffel.
  * Uses Eric Bezault inline C pattern.
+ *
+ * Extended for full spec compliance:
+ * - Volume control (IAudioEndpointVolume)
+ * - Peak level monitoring (IAudioMeterInformation)
  */
 
 #ifndef AUDIO_BRIDGE_H
@@ -11,8 +15,10 @@
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <endpointvolume.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <initguid.h>
+#include <math.h>
 
 /* GUIDs for WASAPI */
 DEFINE_GUID(CLSID_MMDeviceEnumerator_Local, 0xBCDE0395, 0xE52F, 0x467C, 0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E);
@@ -20,6 +26,8 @@ DEFINE_GUID(IID_IMMDeviceEnumerator_Local, 0xA95664D2, 0x9614, 0x4F35, 0xA7, 0x4
 DEFINE_GUID(IID_IAudioClient_Local, 0x1CB9AD4C, 0xDBFA, 0x4c32, 0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2);
 DEFINE_GUID(IID_IAudioRenderClient_Local, 0xF294ACFC, 0x3146, 0x4483, 0xA7, 0xBF, 0xAD, 0xDC, 0xA7, 0xC2, 0x60, 0xE2);
 DEFINE_GUID(IID_IAudioCaptureClient_Local, 0xC8ADBD64, 0xE71E, 0x48a0, 0xA4, 0xDE, 0x18, 0x5C, 0x39, 0x5C, 0xD3, 0x17);
+DEFINE_GUID(IID_IAudioEndpointVolume_Local, 0x5CDF2C82, 0x841E, 0x4546, 0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A);
+DEFINE_GUID(IID_IAudioMeterInformation_Local, 0xC02216F6, 0x8C67, 0x4B5B, 0x9D, 0x00, 0xD0, 0x08, 0xE7, 0x3E, 0x00, 0x64);
 
 /* Device flow direction */
 #define AUDIO_FLOW_RENDER  0
@@ -175,6 +183,145 @@ static void audio_release_device(void* device_ptr) {
         device->lpVtbl->Release(device);
     }
 }
+
+/* ================================================================
+ * VOLUME CONTROL via IAudioEndpointVolume
+ * ================================================================ */
+
+/* Get device volume (0.0 to 1.0) */
+static float audio_get_device_volume(void* device_ptr) {
+    IMMDevice* device = (IMMDevice*)device_ptr;
+    IAudioEndpointVolume* volume = NULL;
+    float level = 0.0f;
+    HRESULT hr;
+
+    if (!device) return 0.0f;
+
+    hr = device->lpVtbl->Activate(
+        device,
+        &IID_IAudioEndpointVolume_Local,
+        CLSCTX_ALL,
+        NULL,
+        (void**)&volume
+    );
+
+    if (SUCCEEDED(hr) && volume) {
+        volume->lpVtbl->GetMasterVolumeLevelScalar(volume, &level);
+        volume->lpVtbl->Release(volume);
+    }
+
+    return level;
+}
+
+/* Set device volume (0.0 to 1.0) */
+static int audio_set_device_volume(void* device_ptr, float level) {
+    IMMDevice* device = (IMMDevice*)device_ptr;
+    IAudioEndpointVolume* volume = NULL;
+    HRESULT hr;
+
+    if (!device) return 0;
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+
+    hr = device->lpVtbl->Activate(
+        device,
+        &IID_IAudioEndpointVolume_Local,
+        CLSCTX_ALL,
+        NULL,
+        (void**)&volume
+    );
+
+    if (SUCCEEDED(hr) && volume) {
+        hr = volume->lpVtbl->SetMasterVolumeLevelScalar(volume, level, NULL);
+        volume->lpVtbl->Release(volume);
+        return SUCCEEDED(hr) ? 1 : 0;
+    }
+
+    return 0;
+}
+
+/* Get mute state */
+static int audio_get_device_mute(void* device_ptr) {
+    IMMDevice* device = (IMMDevice*)device_ptr;
+    IAudioEndpointVolume* volume = NULL;
+    BOOL muted = FALSE;
+    HRESULT hr;
+
+    if (!device) return 0;
+
+    hr = device->lpVtbl->Activate(
+        device,
+        &IID_IAudioEndpointVolume_Local,
+        CLSCTX_ALL,
+        NULL,
+        (void**)&volume
+    );
+
+    if (SUCCEEDED(hr) && volume) {
+        volume->lpVtbl->GetMute(volume, &muted);
+        volume->lpVtbl->Release(volume);
+    }
+
+    return muted ? 1 : 0;
+}
+
+/* Set mute state */
+static int audio_set_device_mute(void* device_ptr, int muted) {
+    IMMDevice* device = (IMMDevice*)device_ptr;
+    IAudioEndpointVolume* volume = NULL;
+    HRESULT hr;
+
+    if (!device) return 0;
+
+    hr = device->lpVtbl->Activate(
+        device,
+        &IID_IAudioEndpointVolume_Local,
+        CLSCTX_ALL,
+        NULL,
+        (void**)&volume
+    );
+
+    if (SUCCEEDED(hr) && volume) {
+        hr = volume->lpVtbl->SetMute(volume, muted ? TRUE : FALSE, NULL);
+        volume->lpVtbl->Release(volume);
+        return SUCCEEDED(hr) ? 1 : 0;
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * PEAK LEVEL MONITORING via IAudioMeterInformation
+ * ================================================================ */
+
+/* Get peak level (0.0 to 1.0) */
+static float audio_get_device_peak_level(void* device_ptr) {
+    IMMDevice* device = (IMMDevice*)device_ptr;
+    IAudioMeterInformation* meter = NULL;
+    float peak = 0.0f;
+    HRESULT hr;
+
+    if (!device) return 0.0f;
+
+    hr = device->lpVtbl->Activate(
+        device,
+        &IID_IAudioMeterInformation_Local,
+        CLSCTX_ALL,
+        NULL,
+        (void**)&meter
+    );
+
+    if (SUCCEEDED(hr) && meter) {
+        meter->lpVtbl->GetPeakValue(meter, &peak);
+        meter->lpVtbl->Release(meter);
+    }
+
+    return peak;
+}
+
+/* ================================================================
+ * AUDIO STREAM
+ * ================================================================ */
 
 /* Audio stream structure */
 typedef struct {

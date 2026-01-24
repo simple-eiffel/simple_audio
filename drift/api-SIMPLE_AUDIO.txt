@@ -1,0 +1,315 @@
+note
+	description: "[
+				SIMPLE_AUDIO - Real-time Audio I/O Library for Eiffel
+		
+				Main facade for Windows Audio Session API (WASAPI) access.
+				Provides device enumeration and audio streaming capabilities.
+		
+				Usage:
+					audio: SIMPLE_AUDIO
+					create audio.make
+		
+					-- List output devices
+					across audio.output_devices as d loop
+						print (d.name + "%N")
+					end
+		
+					-- Create playback stream
+					if attached audio.default_output as dev then
+						if attached audio.create_output_stream (dev, 44100, 2, 16) as stream then
+							stream.start
+							-- write audio data...
+							stream.stop
+						end
+					end
+	]"
+	author: "Larry Rix"
+	date: "$Date$"
+	revision: "$Revision$"
+
+class interface
+	SIMPLE_AUDIO
+
+create 
+	make
+			-- Initialize audio system.
+		ensure
+			initialized: is_initialized
+
+feature -- Access
+
+	default_input: detachable AUDIO_DEVICE
+			-- Default input device (Void if none).
+
+	default_output: detachable AUDIO_DEVICE
+			-- Default output device (Void if none).
+
+	generating_type: TYPE [detachable SIMPLE_AUDIO]
+			-- Type of current object
+			-- (type of which it is a direct instance)
+			-- (from ANY)
+		ensure -- from ANY
+			generating_type_not_void: Result /= Void
+
+	generator: STRING_8
+			-- Name of current object's generating class
+			-- (base class of the type of which it is a direct instance)
+			-- (from ANY)
+		ensure -- from ANY
+			generator_not_void: Result /= Void
+			generator_not_empty: not Result.is_empty
+
+	input_device_count: INTEGER_32
+			-- Number of input devices.
+
+	input_devices: ARRAYED_LIST [AUDIO_DEVICE]
+			-- All available input (recording) devices.
+		ensure
+			result_attached: Result /= Void
+
+	output_device_count: INTEGER_32
+			-- Number of output devices.
+
+	output_devices: ARRAYED_LIST [AUDIO_DEVICE]
+			-- All available output (playback) devices.
+		ensure
+			result_attached: Result /= Void
+	
+feature -- Comparison
+
+	frozen deep_equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void
+			-- or attached to isomorphic object structures?
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			shallow_implies_deep: standard_equal (a, b) implies Result
+			both_or_none_void: (a = Void) implies (Result = (b = Void))
+			same_type: (Result and (a /= Void)) implies (b /= Void and then a.same_type (b))
+			symmetric: Result implies deep_equal (b, a)
+
+	frozen equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void or attached
+			-- to objects considered equal?
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.is_equal (b))
+
+	frozen is_deep_equal alias "≡≡≡" (other: SIMPLE_AUDIO): BOOLEAN
+			-- Are `Current` and `other` attached to isomorphic object structures?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			shallow_implies_deep: standard_is_equal (other) implies Result
+			same_type: Result implies same_type (other)
+			symmetric: Result implies other.is_deep_equal (Current)
+
+	is_equal (other: SIMPLE_AUDIO): BOOLEAN
+			-- Is `other` attached to an object considered
+			-- equal to current object?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			symmetric: Result implies other ~ Current
+			consistent: standard_is_equal (other) implies Result
+
+	frozen standard_equal (a: detachable ANY; b: like arg #1): BOOLEAN
+			-- Are `a` and `b` either both void or attached to
+			-- field-by-field identical objects of the same type?
+			-- Always uses default object comparison criterion.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			definition: Result = (a = Void and b = Void) or else ((a /= Void and b /= Void) and then a.standard_is_equal (b))
+
+	frozen standard_is_equal alias "≜" (other: SIMPLE_AUDIO): BOOLEAN
+			-- Is `other` attached to an object of the same type
+			-- as current object, and field-by-field identical to it?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			same_type: Result implies same_type (other)
+			symmetric: Result implies other.standard_is_equal (Current)
+	
+feature -- Status report
+
+	conforms_to (other: ANY): BOOLEAN
+			-- Does type of current object conform to type
+			-- of `other` (as per Eiffel: The Language, chapter 13)?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+
+	same_type (other: ANY): BOOLEAN
+			-- Is type of current object identical to type of `other`?
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			definition: Result = (conforms_to (other) and other.conforms_to (Current))
+	
+feature -- Duplication
+
+	copy (other: SIMPLE_AUDIO)
+			-- Update current object using fields of object attached
+			-- to `other`, so as to yield equal objects.
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+			type_identity: same_type (other)
+		ensure -- from ANY
+			is_equal: Current ~ other
+
+	frozen deep_copy (other: SIMPLE_AUDIO)
+			-- Effect equivalent to that of:
+			--		`copy` (`other` . `deep_twin`)
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+		ensure -- from ANY
+			deep_equal: deep_equal (Current, other)
+
+	frozen deep_twin: SIMPLE_AUDIO
+			-- New object structure recursively duplicated from Current.
+			-- (from ANY)
+		ensure -- from ANY
+			deep_twin_not_void: Result /= Void
+			deep_equal: deep_equal (Current, Result)
+
+	frozen standard_copy (other: SIMPLE_AUDIO)
+			-- Copy every field of `other` onto corresponding field
+			-- of current object.
+			-- (from ANY)
+		require -- from ANY
+			other_not_void: other /= Void
+			type_identity: same_type (other)
+		ensure -- from ANY
+			is_standard_equal: standard_is_equal (other)
+
+	frozen standard_twin: SIMPLE_AUDIO
+			-- New object field-by-field identical to `other`.
+			-- Always uses default copying semantics.
+			-- (from ANY)
+		ensure -- from ANY
+			standard_twin_not_void: Result /= Void
+			equal: standard_equal (Result, Current)
+
+	frozen twin: SIMPLE_AUDIO
+			-- New object equal to `Current`
+			-- `twin` calls `copy`; to change copying/twinning semantics, redefine `copy`.
+			-- (from ANY)
+		ensure -- from ANY
+			twin_not_void: Result /= Void
+			is_equal: Result ~ Current
+	
+feature -- Basic operations
+
+	frozen default: detachable SIMPLE_AUDIO
+			-- Default value of object's type
+			-- (from ANY)
+
+	frozen default_pointer: POINTER
+			-- Default value of type `POINTER`
+			-- (Avoid the need to write `p`.`default` for
+			-- some `p` of type `POINTER`.)
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+
+	default_rescue
+			-- Process exception for routines with no Rescue clause.
+			-- (Default: do nothing.)
+			-- (from ANY)
+
+	frozen do_nothing
+			-- Execute a null action.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+	
+feature -- Cleanup
+
+	dispose
+			-- Release audio system resources.
+	
+feature -- Operations
+
+	create_input_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER_32): detachable AUDIO_STREAM
+			-- Create input stream for device.
+		require
+			device_valid: a_device /= Void
+			device_is_input: a_device.is_input
+			sample_rate_valid: a_sample_rate > 0
+			channels_valid: a_channels > 0 and a_channels <= 8
+			bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
+
+	create_output_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER_32): detachable AUDIO_STREAM
+			-- Create output stream for device.
+		require
+			device_valid: a_device /= Void
+			device_is_output: a_device.is_output
+			sample_rate_valid: a_sample_rate > 0
+			channels_valid: a_channels > 0 and a_channels <= 8
+			bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
+
+	refresh
+			-- Re-enumerate all audio devices.
+	
+feature -- Output
+
+	Io: STD_FILES
+			-- Handle to standard file setup
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			io_not_void: Result /= Void
+
+	out: STRING_8
+			-- New string containing terse printable representation
+			-- of current object
+			-- (from ANY)
+		ensure -- from ANY
+			out_not_void: Result /= Void
+
+	print (o: detachable ANY)
+			-- Write terse external representation of `o`
+			-- on standard output.
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+
+	frozen tagged_out: STRING_8
+			-- New string containing terse printable representation
+			-- of current object
+			-- (from ANY)
+		ensure -- from ANY
+			tagged_out_not_void: Result /= Void
+	
+feature -- Platform
+
+	Operating_environment: OPERATING_ENVIRONMENT
+			-- Objects available from the operating system
+			-- (from ANY)
+		ensure -- from ANY
+			instance_free: class
+			operating_environment_not_void: Result /= Void
+	
+feature -- Status
+
+	is_initialized: BOOLEAN
+			-- Is audio system initialized?
+	
+invariant
+	output_devices_attached: internal_output_devices /= Void
+	input_devices_attached: internal_input_devices /= Void
+
+		-- from ANY
+	reflexive_equality: standard_is_equal (Current)
+	reflexive_conformance: conforms_to (Current)
+
+end -- class SIMPLE_AUDIO
+

@@ -1,0 +1,262 @@
+================================================================================
+SIMPLE_AUDIO - Flat Short API Reference (Backwash from Implementation)
+================================================================================
+Generated: 2026-01-23
+Status: Reverse-engineered from implementation
+================================================================================
+
+class SIMPLE_AUDIO
+
+create
+    make
+
+feature -- Access
+
+    output_devices: ARRAYED_LIST [AUDIO_DEVICE]
+        -- All available output (playback) devices.
+
+    input_devices: ARRAYED_LIST [AUDIO_DEVICE]
+        -- All available input (recording) devices.
+
+    default_output: detachable AUDIO_DEVICE
+        -- Default output device (Void if none).
+
+    default_input: detachable AUDIO_DEVICE
+        -- Default input device (Void if none).
+
+    output_device_count: INTEGER
+        -- Number of output devices.
+
+    input_device_count: INTEGER
+        -- Number of input devices.
+
+feature -- Status
+
+    is_initialized: BOOLEAN
+        -- Is audio system initialized?
+
+feature -- Operations
+
+    refresh
+        -- Re-enumerate all audio devices.
+
+    create_output_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER): detachable AUDIO_STREAM
+        -- Create output stream for device.
+        require
+            device_valid: a_device /= Void
+            device_is_output: a_device.is_output
+            sample_rate_valid: a_sample_rate > 0
+            channels_valid: a_channels > 0 and a_channels <= 8
+            bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
+
+    create_input_stream (a_device: AUDIO_DEVICE; a_sample_rate, a_channels, a_bits: INTEGER): detachable AUDIO_STREAM
+        -- Create input stream for device.
+        require
+            device_valid: a_device /= Void
+            device_is_input: a_device.is_input
+            sample_rate_valid: a_sample_rate > 0
+            channels_valid: a_channels > 0 and a_channels <= 8
+            bits_valid: a_bits = 8 or a_bits = 16 or a_bits = 24 or a_bits = 32
+
+feature -- Cleanup
+
+    dispose
+        -- Release audio system resources.
+
+invariant
+    output_devices_attached: internal_output_devices /= Void
+    input_devices_attached: internal_input_devices /= Void
+
+================================================================================
+AUDIO_DEVICE
+================================================================================
+
+class AUDIO_DEVICE
+
+create
+    make_from_handle, make_empty
+
+feature -- Access
+
+    name: STRING_32
+        -- Friendly name of this device.
+
+    id: STRING_32
+        -- Unique device identifier.
+
+    handle: POINTER
+        -- Native device handle (IMMDevice*).
+
+feature -- Status
+
+    is_output: BOOLEAN
+        -- Is this an output (playback) device?
+
+    is_input: BOOLEAN
+        -- Is this an input (recording) device?
+
+    is_valid: BOOLEAN
+        -- Is this device handle valid?
+
+feature -- Comparison
+
+    same_device (other: AUDIO_DEVICE): BOOLEAN
+        -- Is `other` the same physical device?
+
+feature -- Display
+
+    display_name: STRING_32
+        -- Formatted display name with direction.
+
+================================================================================
+AUDIO_STREAM
+================================================================================
+
+class AUDIO_STREAM
+
+create
+    make_from_handle
+
+feature -- Access
+
+    handle: POINTER
+        -- Native stream handle.
+
+    sample_rate: INTEGER
+        -- Sample rate in Hz.
+
+    channels: INTEGER
+        -- Number of channels.
+
+    bits_per_sample: INTEGER
+        -- Bits per sample (8, 16, 24, 32).
+
+    bytes_per_frame: INTEGER
+        -- Bytes per frame (channels * bytes_per_sample).
+
+    buffer_size: INTEGER
+        -- Size of hardware buffer in frames.
+
+feature -- Status
+
+    is_output: BOOLEAN
+        -- Is this an output (playback) stream?
+
+    is_input: BOOLEAN
+        -- Is this an input (recording) stream?
+
+    is_started: BOOLEAN
+        -- Is stream currently running?
+
+    is_valid: BOOLEAN
+        -- Is this stream valid?
+
+    available_frames: INTEGER
+        -- Number of frames available for writing (output) or reading (input).
+
+feature -- Operations
+
+    start
+        -- Start the audio stream.
+        require
+            stream_valid: is_valid
+            not_started: not is_started
+
+    stop
+        -- Stop the audio stream.
+        require
+            stream_valid: is_valid
+            is_running: is_started
+
+    write (a_buffer: AUDIO_BUFFER): INTEGER
+        -- Write audio data from buffer. Returns frames written.
+        require
+            stream_valid: is_valid
+            is_running: is_started
+            is_output_stream: is_output
+            buffer_valid: a_buffer /= Void
+            format_matches: a_buffer.channels = channels and a_buffer.bits_per_sample = bits_per_sample
+
+    read (a_buffer: AUDIO_BUFFER): INTEGER
+        -- Read audio data into buffer. Returns frames read.
+        require
+            stream_valid: is_valid
+            is_running: is_started
+            is_input_stream: is_input
+            buffer_valid: a_buffer /= Void
+            format_matches: a_buffer.channels = channels and a_buffer.bits_per_sample = bits_per_sample
+
+feature -- Cleanup
+
+    close
+        -- Close and release stream resources.
+
+================================================================================
+AUDIO_BUFFER
+================================================================================
+
+class AUDIO_BUFFER
+
+create
+    make, make_empty, make_from_wav
+
+feature -- Access
+
+    frame_count: INTEGER
+        -- Number of audio frames.
+
+    channels: INTEGER
+        -- Number of channels.
+
+    bits_per_sample: INTEGER
+        -- Bits per sample.
+
+    bytes_per_sample: INTEGER
+        -- Bytes per sample.
+
+    bytes_per_frame: INTEGER
+        -- Bytes per frame.
+
+    sample_rate: INTEGER
+        -- Sample rate in Hz.
+
+    data: MANAGED_POINTER
+        -- Raw PCM data.
+
+    is_valid: BOOLEAN
+        -- Was last operation successful?
+
+    last_error: STRING
+        -- Error message if not valid.
+
+    byte_count: INTEGER
+        -- Total size in bytes.
+
+    duration: REAL_64
+        -- Duration in seconds.
+
+    sample_at (a_frame, a_channel: INTEGER): REAL_64
+        -- Get sample value at frame and channel (normalized -1.0 to 1.0).
+
+feature -- Element change
+
+    set_sample (a_frame, a_channel: INTEGER; a_value: REAL_64)
+        -- Set sample value at frame and channel (normalized -1.0 to 1.0).
+
+    clear
+        -- Zero all samples.
+
+feature -- Export
+
+    save_to_wav (a_path: READABLE_STRING_GENERAL): BOOLEAN
+        -- Save buffer to WAV file. Returns True on success.
+
+feature -- Generation
+
+    fill_sine_wave (a_frequency: REAL_64; a_sample_rate: INTEGER)
+        -- Fill buffer with sine wave at given frequency.
+
+    fill_silence
+        -- Fill buffer with silence.
+
+================================================================================

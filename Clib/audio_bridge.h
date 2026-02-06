@@ -13,6 +13,45 @@
 #define AUDIO_BRIDGE_H
 
 #include <windows.h>
+
+/* Forward-declare kernel streaming types needed by devicetopology.h
+   (pulled in via mmdeviceapi.h) when WIN32_LEAN_AND_MEAN is defined */
+#ifndef __KSJACK_DESCRIPTION__
+#define __KSJACK_DESCRIPTION__
+typedef struct _tagKSJACK_DESCRIPTION {
+    DWORD ChannelMapping;
+    DWORD Color;
+    DWORD ConnectionType;
+    DWORD GeoLocation;
+    DWORD GenLocation;
+    DWORD PortConnection;
+    BOOL  IsConnected;
+} KSJACK_DESCRIPTION, *PKSJACK_DESCRIPTION;
+#endif
+
+#ifndef __KSJACK_DESCRIPTION2__
+#define __KSJACK_DESCRIPTION2__
+typedef struct _tagKSJACK_DESCRIPTION2 {
+    DWORD DeviceStateInfo;
+    DWORD JackCapabilities;
+} KSJACK_DESCRIPTION2, *PKSJACK_DESCRIPTION2;
+#endif
+
+#ifndef __KSJACK_SINK_INFORMATION__
+#define __KSJACK_SINK_INFORMATION__
+typedef struct _tagKSJACK_SINK_INFORMATION {
+    DWORD ConnType;
+    WORD  ManufacturerId;
+    WORD  ProductId;
+    WORD  AudioLatency;
+    BOOL  HDCPCapable;
+    BOOL  AICapable;
+    UCHAR SinkDescriptionLength;
+    WCHAR SinkDescription[32];
+    GUID  PortId;
+} KSJACK_SINK_INFORMATION, *PKSJACK_SINK_INFORMATION;
+#endif
+
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 #include <endpointvolume.h>

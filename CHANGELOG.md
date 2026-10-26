@@ -2,6 +2,34 @@
 
 All notable changes to simple_audio.
 
+## 1.1.1 - 2026-10-25
+
+### Fixed (design scan 21, since 3ed644f)
+
+Report: `.eiffel-workflow/evidence/design-scan-since-3ed644f.md` (2 HIGH,
+7 MEDIUM, 9 LOW). Each fix has a test that failed on the old code:
+- **HIGH**: `play` filled the sink before starting it, and a device takes
+  nothing while stopped, so playback started empty (the test sink hid it by
+  taking audio while stopped; it now behaves as a device does). `play`
+  starts the sink, then fills it; a device that will not start leaves
+  `last_error` instead of breaking the postcondition.
+  `test_scan21_play_starts_the_device_with_sound_queued` (old code:
+  "started with sound queued: 0"),
+  `test_scan21_a_device_that_will_not_start_says_so`.
+- **HIGH**: a seek left the device's buffered audio playing and set the
+  clock's base below zero (breaking `position_seconds`' postcondition).
+  New `AUDIO_SINK.discard_buffered` (`AUDIO_STREAM.reset`: stop, reset the
+  WASAPI buffer, start again) is called by `seek`; the clock reads the new
+  place at once; invariant `clock_from_zero`.
+  `test_scan21_seek_forgets_what_the_device_held`.
+- MEDIUM: a decoding error ended nothing - the player waited for an end
+  that never came. It now ends the file there and keeps the reason in
+  `last_error`.
+- 22 pass. Open (in the report): Media Foundation's error and format-change
+  flags, COM and MFShutdown balance, a decoder without dispose, tighter
+  test tolerances and stereo, and the duplication with AUDIO_PLAYER
+  (volume, finish notice, pause) that side-by-side mixins should absorb.
+
 ## 1.1.0 - 2026-10-25
 
 ### Added (MP3 and other compressed files, for simple_bible GW-25)

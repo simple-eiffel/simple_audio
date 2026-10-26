@@ -53,6 +53,9 @@ feature {NONE} -- Test Runners
 			run_test (agent lib_tests.test_empty_buffer, "test_empty_buffer")
 			run_test (agent lib_tests.test_mp3_decodes_to_the_tone_it_holds, "test_mp3_decodes_to_the_tone_it_holds")
 			run_test (agent lib_tests.test_a_file_streams_into_a_sink, "test_a_file_streams_into_a_sink")
+			run_test (agent lib_tests.test_scan21_play_starts_the_device_with_sound_queued, "test_scan21_play_starts_the_device_with_sound_queued")
+			run_test (agent lib_tests.test_scan21_seek_forgets_what_the_device_held, "test_scan21_seek_forgets_what_the_device_held")
+			run_test (agent lib_tests.test_scan21_a_device_that_will_not_start_says_so, "test_scan21_a_device_that_will_not_start_says_so")
 		end
 
 feature {NONE} -- Test Infrastructure

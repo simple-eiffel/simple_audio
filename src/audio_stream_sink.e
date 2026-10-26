@@ -86,6 +86,11 @@ feature -- Operations
 			end
 		end
 
+	discard_buffered
+		do
+			stream.reset.do_nothing
+		end
+
 	close
 		do
 			stream.close

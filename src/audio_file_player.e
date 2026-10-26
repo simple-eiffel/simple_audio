@@ -55,6 +55,12 @@ feature -- Access
 			non_negative: Result >= 0.0
 		end
 
+	last_error: STRING_32
+			-- Why the last `play' did not start, or decoding stopped.
+		attribute
+			create Result.make_empty
+		end
+
 	on_finished: detachable PROCEDURE
 			-- Run once, when the last sound has been heard.
 
@@ -92,18 +98,24 @@ feature -- Element change
 feature -- Operations
 
 	play
-			-- Start or resume.
+			-- Start or resume: the sink first (a stopped device takes no
+			-- audio - scan 21), then filled.
 		do
+			last_error.wipe_out
 			if is_finished then
 				seek (0.0)
 			end
 			if not sink.is_started then
-				pump
 				sink.start
 			end
-			is_paused := False
+			if sink.is_started then
+				is_paused := False
+				pump
+			else
+				last_error := {STRING_32} "the audio device did not start"
+			end
 		ensure
-			playing: sink.is_started and not is_paused
+			playing_or_said: (sink.is_started and not is_paused) or not last_error.is_empty
 		end
 
 	pause
@@ -123,7 +135,9 @@ feature -- Operations
 			non_negative: a_seconds >= 0.0
 		do
 			if decoder.seek (a_seconds) then
-				base_seconds := a_seconds - (sink.buffered_frames / decoder.sample_rate)
+					-- the old audio goes: the clock reads the new place at once (scan 21)
+				sink.discard_buffered
+				base_seconds := a_seconds
 				frames_sent := 0
 				pending := Void
 				pending_at := 0
@@ -161,7 +175,13 @@ feature -- Operations
 					l_done := True
 				end
 			end
-			if decoder.is_at_end and pending = Void and sink.buffered_frames = 0 and not finished_told then
+			if pending = Void and not decoder.last_error.is_empty and last_error.is_empty then
+					-- a decoding error ends the file here (scan 21: it waited forever)
+				last_error := decoder.last_error.twin
+			end
+			if (decoder.is_at_end or not decoder.last_error.is_empty) and pending = Void
+				and sink.buffered_frames = 0 and not finished_told
+			then
 				is_finished := True
 				finished_told := True
 				if attached on_finished as al_f then
@@ -203,5 +223,6 @@ feature {NONE} -- Implementation
 
 invariant
 	volume_in_range: volume >= 0.0 and volume <= 1.0
+	clock_from_zero: base_seconds >= 0.0
 
 end

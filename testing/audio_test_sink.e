@@ -58,8 +58,21 @@ feature -- Status
 feature -- Operations
 
 	start
+			-- Unless told to refuse (a device that will not start).
 		do
-			is_started := True
+			is_started := not refuses_start
+		end
+
+	refuses_start: BOOLEAN
+
+	set_refuses_start (a_on: BOOLEAN)
+		do
+			refuses_start := a_on
+		end
+
+	discard_buffered
+		do
+			queued := 0
 		end
 
 	stop
@@ -68,10 +81,13 @@ feature -- Operations
 		end
 
 	write_frames (a_buffer: AUDIO_BUFFER; a_first, a_count: INTEGER): INTEGER
+			-- Nothing while stopped, as the device (AUDIO_STREAM_SINK) does.
 		local
 			i: INTEGER
 		do
-			Result := a_count.min (available_frames)
+			if is_started then
+				Result := a_count.min (available_frames)
+			end
 			from i := 0 until i >= Result loop
 				heard.extend (a_buffer.sample_at (a_first + i, 0))
 				i := i + 1

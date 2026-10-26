@@ -247,4 +247,118 @@ feature -- Tests
 			assert ("has_data", buffer.data /= Void)
 		end
 
+
+feature -- MP3 decoding and streaming (0.2.0, GW-25)
+
+	test_mp3_decodes_to_the_tone_it_holds
+			-- The fixture is two seconds of 440 Hz, mono, 44.1 kHz: Media
+			-- Foundation decodes it to that - about 88,200 frames crossing zero
+			-- about 1,760 times - and a seek to 1 second leaves about half.
+		local
+			d: AUDIO_DECODER
+			l_frames, l_crossings, i: INTEGER
+			l_last: REAL_64
+			l_done: BOOLEAN
+		do
+			create d.make
+			assert ("opens " + d.last_error.to_string_8, d.open (fixture_path))
+			assert ("44.1 kHz", d.sample_rate = 44100)
+			assert ("mono", d.channels = 1)
+			assert ("two seconds: " + d.duration_seconds.out, (d.duration_seconds - 2.0).abs < 0.1)
+			from until l_done loop
+				if attached d.read_chunk (4096) as al_chunk then
+					from i := 0 until i >= al_chunk.frame_count loop
+							-- only clearly signed samples count: the encoder's quiet
+							-- padding flickers about zero without being the tone
+						if al_chunk.sample_at (i, 0).abs > 0.1 then
+							if l_last /= 0.0 and then (al_chunk.sample_at (i, 0) > 0.0) /= (l_last > 0.0) then
+								l_crossings := l_crossings + 1
+							end
+							l_last := al_chunk.sample_at (i, 0)
+						end
+						i := i + 1
+					end
+					l_frames := l_frames + al_chunk.frame_count
+				else
+					l_done := True
+				end
+			end
+			assert ("at the end", d.is_at_end)
+			assert ("about 88,200 frames: " + l_frames.out, (l_frames - 88200).abs < 3000)
+			assert ("440 Hz: " + l_crossings.out + " zero crossings", (l_crossings - 1760).abs < 90)
+			assert ("seeks", d.seek (1.0))
+			assert ("from one second: " + d.position_seconds.out, (d.position_seconds - 1.0).abs < 0.05)
+			l_frames := 0
+			from l_done := False until l_done loop
+				if attached d.read_chunk (4096) as al_chunk then
+					l_frames := l_frames + al_chunk.frame_count
+				else
+					l_done := True
+				end
+			end
+			assert ("about half left: " + l_frames.out, (l_frames - 44100).abs < 3000)
+			d.close
+			assert ("closed", not d.is_open)
+		end
+
+	test_a_file_streams_into_a_sink
+			-- The player keeps a 0.1-second sink topped up while it drains in
+			-- 50-millisecond steps: everything is heard, the clock follows,
+			-- the end is told once, and a seek replays from there.
+		local
+			d: AUDIO_DECODER
+			l_sink: AUDIO_TEST_SINK
+			l_player: AUDIO_FILE_PLAYER
+			i: INTEGER
+		do
+			create d.make
+			assert ("opens", d.open (fixture_path))
+			create l_sink.make (44100, 1, 4410)
+			create l_player.make (d, l_sink)
+			l_player.set_on_finished (agent do finished_count := finished_count + 1 end)
+			finished_count := 0
+			l_player.play
+			assert ("playing", l_player.is_playing)
+			from i := 1 until i > 20 loop
+				l_sink.drain (2205)
+				l_player.pump
+				i := i + 1
+			end
+			assert ("the clock follows what is heard: " + l_player.position_seconds.out, (l_player.position_seconds - 1.0).abs < 0.1)
+			l_player.pause
+			l_sink.drain (2205)
+			assert ("paused: nothing more is heard", l_sink.queued > 0 and l_player.is_paused)
+			l_player.play
+			from i := 1 until l_player.is_finished or i > 200 loop
+				l_sink.drain (2205)
+				l_player.pump
+				i := i + 1
+			end
+			assert ("finished", l_player.is_finished)
+			assert ("told once", finished_count = 1)
+			assert ("everything was given: " + l_sink.heard.count.out, (l_sink.heard.count - 88200).abs < 3000)
+			assert ("the clock at the end: " + l_player.position_seconds.out, (l_player.position_seconds - 2.0).abs < 0.1)
+			l_sink.heard.wipe_out
+			l_player.seek (1.5)
+			l_player.play
+			from i := 1 until l_player.is_finished or i > 200 loop
+				l_sink.drain (2205)
+				l_player.pump
+				i := i + 1
+			end
+			assert ("a seek replays the last half second: " + l_sink.heard.count.out, (l_sink.heard.count - 22050).abs < 3000)
+			assert ("told again after the seek", finished_count = 2)
+			d.close
+		end
+
+feature {NONE} -- Fixtures
+
+	finished_count: INTEGER
+
+	fixture_path: STRING_32
+			-- The 440 Hz MP3, by an absolute path.
+		do
+			Result := (create {EXECUTION_ENVIRONMENT}).current_working_path.extended ("testing").extended ("fixtures").extended ("tone_440_2s.mp3").name
+		end
+
 end

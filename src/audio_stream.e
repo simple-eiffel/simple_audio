@@ -166,6 +166,19 @@ feature -- Operations
 			bounded: Result >= 0 and Result <= a_count
 		end
 
+	reset: BOOLEAN
+			-- Throw away what the stream holds, keeping it running if it was
+			-- (scan 21, for a seek). True when it was reset.
+		require
+			stream_valid: is_valid
+		local
+			l_was: BOOLEAN
+		do
+			l_was := is_started
+			Result := c_reset (handle) = 1
+			is_started := l_was and c_reset_left_started (handle) = 1
+		end
+
 	read (a_buffer: AUDIO_BUFFER): INTEGER
 			-- Read audio data into buffer. Returns frames read.
 		require
@@ -239,6 +252,16 @@ feature {NONE} -- C externals
 			"C inline use %"audio_bridge.h%""
 		alias
 			"return (EIF_INTEGER)audio_stream_get_buffer_size($a_stream);"
+		end
+
+	c_reset (a_stream: POINTER): INTEGER
+		external "C inline use %"audio_bridge.h%""
+		alias "return audio_stream_reset($a_stream);"
+		end
+
+	c_reset_left_started (a_stream: POINTER): INTEGER
+		external "C inline use %"audio_bridge.h%""
+		alias "return ((AudioStream*)$a_stream)->is_started;"
 		end
 
 	c_destroy (a_stream: POINTER)

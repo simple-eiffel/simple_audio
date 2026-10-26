@@ -72,7 +72,8 @@ feature -- Operations
 
 	write_frames (a_buffer: AUDIO_BUFFER; a_first, a_count: INTEGER): INTEGER
 			-- Queue up to `a_count' frames of `a_buffer' from frame `a_first'
-			-- (0-based); the frames taken.
+			-- (0-based); the frames taken. A stopped sink may take none (a
+			-- device does not): start it first.
 		require
 			ready: is_ready
 			format_matches: a_buffer.channels = channels and a_buffer.bits_per_sample = bits_per_sample
@@ -80,6 +81,15 @@ feature -- Operations
 		deferred
 		ensure
 			bounded: Result >= 0 and Result <= a_count
+		end
+
+	discard_buffered
+			-- Forget what is queued and not yet heard (a seek).
+		require
+			ready: is_ready
+		deferred
+		ensure
+			emptied: buffered_frames = 0
 		end
 
 	close

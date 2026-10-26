@@ -487,6 +487,24 @@ static int audio_stream_stop(void* stream_ptr) {
     return 0;
 }
 
+/* Throw away what the stream holds (scan 21, for a seek): stop, reset the
+   client's buffer, start again if it was running. 1 when it was reset. */
+static int audio_stream_reset(void* stream_ptr) {
+    AudioStream* stream = (AudioStream*)stream_ptr;
+    int was_started;
+    HRESULT hr;
+
+    if (!stream || !stream->client) return 0;
+    was_started = stream->is_started;
+    if (was_started) {
+        stream->client->lpVtbl->Stop(stream->client);
+        stream->is_started = 0;
+    }
+    hr = stream->client->lpVtbl->Reset(stream->client);
+    if (was_started && SUCCEEDED(stream->client->lpVtbl->Start(stream->client))) stream->is_started = 1;
+    return SUCCEEDED(hr) ? 1 : 0;
+}
+
 /* Get available frames for writing (render) */
 static int audio_stream_get_available_frames(void* stream_ptr) {
     AudioStream* stream = (AudioStream*)stream_ptr;

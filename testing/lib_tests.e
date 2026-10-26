@@ -351,6 +351,65 @@ feature -- MP3 decoding and streaming (0.2.0, GW-25)
 			d.close
 		end
 
+feature -- Scan 21
+
+	test_scan21_play_starts_the_device_with_sound_queued
+			-- A device takes nothing while stopped: `play' must start it, then
+			-- fill it - not fill a stopped device that drops the audio.
+		local
+			d: AUDIO_DECODER
+			l_sink: AUDIO_TEST_SINK
+			l_player: AUDIO_FILE_PLAYER
+		do
+			create d.make
+			assert ("opens", d.open (fixture_path))
+			create l_sink.make (44100, 1, 4410)
+			create l_player.make (d, l_sink)
+			l_player.play
+			assert ("started with sound queued: " + l_sink.queued.out, l_sink.is_started and l_sink.queued > 0)
+			d.close
+		end
+
+	test_scan21_seek_forgets_what_the_device_held
+			-- A seek drops the old audio the device still holds, so the clock
+			-- reads the new place at once (and never goes below zero).
+		local
+			d: AUDIO_DECODER
+			l_sink: AUDIO_TEST_SINK
+			l_player: AUDIO_FILE_PLAYER
+		do
+			create d.make
+			assert ("opens", d.open (fixture_path))
+			create l_sink.make (44100, 1, 4410)
+			create l_player.make (d, l_sink)
+			l_player.play
+			l_sink.drain (2205)
+			l_player.pump
+			l_player.seek (0.0)
+			assert ("the old audio is forgotten", l_sink.queued = 0)
+			assert ("the clock reads the new place: " + l_player.position_seconds.out, l_player.position_seconds.abs < 0.001)
+			l_player.pump
+			assert ("and fills again from there", l_sink.queued > 0)
+			d.close
+		end
+
+	test_scan21_a_device_that_will_not_start_says_so
+		local
+			d: AUDIO_DECODER
+			l_sink: AUDIO_TEST_SINK
+			l_player: AUDIO_FILE_PLAYER
+		do
+			create d.make
+			assert ("opens", d.open (fixture_path))
+			create l_sink.make (44100, 1, 4410)
+			l_sink.set_refuses_start (True)
+			create l_player.make (d, l_sink)
+			l_player.play
+			assert ("not playing", not l_player.is_playing)
+			assert ("and it says why", not l_player.last_error.is_empty)
+			d.close
+		end
+
 feature {NONE} -- Fixtures
 
 	finished_count: INTEGER

@@ -146,6 +146,26 @@ feature -- Operations
 			non_negative: Result >= 0
 		end
 
+	write_frames (a_buffer: AUDIO_BUFFER; a_first, a_count: INTEGER): INTEGER
+			-- Write up to `a_count' frames of `a_buffer' from frame `a_first'
+			-- (0-based); the frames written (0.2.0, for streaming).
+		require
+			stream_valid: is_valid
+			is_running: is_started
+			is_output_stream: is_output
+			format_matches: a_buffer.channels = channels and a_buffer.bits_per_sample = bits_per_sample
+			in_range: a_first >= 0 and a_count >= 0 and a_first + a_count <= a_buffer.frame_count
+		local
+			l_frames: INTEGER
+		do
+			l_frames := available_frames.min (a_count)
+			if l_frames > 0 then
+				Result := c_write (handle, a_buffer.data.item + a_first * a_buffer.bytes_per_frame, l_frames)
+			end
+		ensure
+			bounded: Result >= 0 and Result <= a_count
+		end
+
 	read (a_buffer: AUDIO_BUFFER): INTEGER
 			-- Read audio data into buffer. Returns frames read.
 		require

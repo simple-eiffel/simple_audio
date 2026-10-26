@@ -99,6 +99,28 @@ do
 end
 ```
 
+## Playing MP3 and Other Compressed Files (1.1.0)
+
+```eiffel
+local
+    decoder: AUDIO_DECODER
+    player: AUDIO_FILE_PLAYER
+do
+    create decoder.make
+    if decoder.open ("Genesis_01.mp3") then
+        -- a sink in the decoder's format: an output AUDIO_STREAM as AUDIO_STREAM_SINK
+        create player.make (decoder, sink)
+        player.play
+        -- from the host's clock (a fast GUI tick, a worker loop):
+        player.pump
+    end
+end
+```
+
+`AUDIO_DECODER` reads whatever Windows decodes (MP3, AAC/M4A, WMA, WAV)
+through Media Foundation, a chunk at a time; `AUDIO_FILE_PLAYER` streams it,
+with `pause`, `seek`, `volume`, `position_seconds` and `on_finished`.
+
 ## Audio Recording
 
 ```eiffel
@@ -168,6 +190,8 @@ set SIMPLE_EIFFEL=D:\prod
 - simple_file (file operations)
 - EiffelBase (for MANAGED_POINTER)
 - ole32.lib, uuid.lib (Windows system libraries, linked automatically)
+- mfplat.lib, mfreadwrite.lib, mfuuid.lib (Media Foundation, linked by `audio_mf.h`; Windows 7 or later)
+- ISE `wel` (still; against the simple_* rule - noted in the CHANGELOG)
 
 ## API Reference
 
@@ -208,6 +232,26 @@ set SIMPLE_EIFFEL=D:\prod
 | `channels` | Number of channels |
 | `bits_per_sample` | Bit depth |
 
+### AUDIO_DECODER (1.1.0)
+
+| Method | Description |
+|--------|-------------|
+| `open (path)` | Open a file Windows can decode; True on success |
+| `read_chunk (max_frames)` | The next 16-bit PCM chunk; Void at the end |
+| `seek (seconds)` | Continue from there |
+| `position_seconds`, `duration_seconds` | Where, and how long |
+| `close` | Let the file go |
+
+### AUDIO_FILE_PLAYER (1.1.0)
+
+| Method | Description |
+|--------|-------------|
+| `make (decoder, sink)` | Stream the decoder into a sink of its format |
+| `play`, `pause`, `seek (seconds)` | Transport |
+| `pump` | Top the sink up (call from the host's clock) |
+| `position_seconds` | What is being heard |
+| `set_volume`, `set_on_finished` | Volume; told once at the end |
+
 ### AUDIO_BUFFER
 
 | Method | Description |
@@ -230,6 +274,7 @@ set SIMPLE_EIFFEL=D:\prod
 - **Channels**: 1-8 (mono, stereo, surround)
 - **Bit depths**: 8, 16, 24, 32 (PCM)
 - **WAV files**: PCM format only (no compression)
+- **Compressed files** (1.1.0): MP3, AAC/M4A, WMA and anything else Windows decodes, through `AUDIO_DECODER`
 
 ## Platform Support
 

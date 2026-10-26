@@ -51,6 +51,8 @@ feature {NONE} -- Test Runners
 			run_test (agent lib_tests.test_buffer_sine_wave, "test_buffer_sine_wave")
 			run_test (agent lib_tests.test_empty_device, "test_empty_device")
 			run_test (agent lib_tests.test_empty_buffer, "test_empty_buffer")
+			run_test (agent lib_tests.test_mp3_decodes_to_the_tone_it_holds, "test_mp3_decodes_to_the_tone_it_holds")
+			run_test (agent lib_tests.test_a_file_streams_into_a_sink, "test_a_file_streams_into_a_sink")
 		end
 
 feature {NONE} -- Test Infrastructure
@@ -69,6 +71,9 @@ feature {NONE} -- Test Infrastructure
 			l_failed := True
 			failed := failed + 1
 			print ("[FAIL] " + a_name + "%N")
+			if attached (create {EXCEPTION_MANAGER}).last_exception as al_e and then attached al_e.description as al_why then
+				print ("       why: " + al_why.to_string_8 + "%N")
+			end
 			retry
 		end
 

@@ -11,7 +11,7 @@
         <h1>simple_audio</h1>
         <p class="tagline">Real-time Audio I/O for Eiffel</p>
         <div class="badges">
-            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-version">v1.1.0</span>
             <span class="badge badge-license">MIT</span>
             <span class="badge">Windows</span>
         </div>
@@ -79,6 +79,8 @@
         </section>
 
         <section id="recording">
+            <h2>MP3 and Compressed Files (1.1.0)</h2>
+            <p><code>AUDIO_DECODER</code> reads MP3, AAC/M4A, WMA and anything else Windows decodes through Media Foundation, a chunk at a time; <code>AUDIO_FILE_PLAYER</code> streams it into a sink with <code>play</code>, <code>pause</code>, <code>seek</code>, <code>volume</code> and <code>position_seconds</code>.</p>
             <h2>Audio Recording</h2>
 <pre><code><span class="keyword">local</span>
     audio: <span class="type">SIMPLE_AUDIO</span>

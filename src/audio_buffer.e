@@ -315,6 +315,16 @@ feature -- Element change
 
 feature -- Export
 
+	set_sample_rate (a_rate: INTEGER)
+			-- Frames per second the samples are meant for.
+		require
+			positive: a_rate > 0
+		do
+			sample_rate := a_rate
+		ensure
+			set: sample_rate = a_rate
+		end
+
 	save_to_wav (a_path: READABLE_STRING_GENERAL): BOOLEAN
 			-- Save buffer to WAV file. Returns True on success.
 		require

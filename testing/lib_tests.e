@@ -32,7 +32,7 @@ feature -- Tests
 			-- Most systems have at least one output device
 			print ("  Output devices found: " + devices.count.out + "%N")
 			across devices as d loop
-				print ("    - " + d.display_name + "%N")
+				print ({STRING_32} "    - " + d.display_name + "%N")
 				assert ("device_valid", d.is_valid)
 				assert ("device_is_output", d.is_output)
 			end
@@ -50,7 +50,7 @@ feature -- Tests
 			assert ("devices_not_void", devices /= Void)
 			print ("  Input devices found: " + devices.count.out + "%N")
 			across devices as d loop
-				print ("    - " + d.display_name + "%N")
+				print ({STRING_32} "    - " + d.display_name + "%N")
 				assert ("device_valid", d.is_valid)
 				assert ("device_is_input", d.is_input)
 			end
@@ -64,7 +64,7 @@ feature -- Tests
 		do
 			create audio.make
 			if attached audio.default_output as dev then
-				print ("  Default output: " + dev.name + "%N")
+				print ({STRING_32} "  Default output: " + dev.name + "%N")
 				assert ("is_output", dev.is_output)
 				assert ("has_name", not dev.name.is_empty)
 			else
@@ -80,7 +80,7 @@ feature -- Tests
 		do
 			create audio.make
 			if attached audio.default_input as dev then
-				print ("  Default input: " + dev.name + "%N")
+				print ({STRING_32} "  Default input: " + dev.name + "%N")
 				assert ("is_input", dev.is_input)
 				assert ("has_name", not dev.name.is_empty)
 			else
@@ -99,8 +99,8 @@ feature -- Tests
 				assert ("name_not_empty", not dev.name.is_empty)
 				assert ("id_not_empty", not dev.id.is_empty)
 				assert ("display_name_not_empty", not dev.display_name.is_empty)
-				print ("  Name: " + dev.name + "%N")
-				print ("  ID: " + dev.id + "%N")
+				print ({STRING_32} "  Name: " + dev.name + "%N")
+				print ({STRING_32} "  ID: " + dev.id + "%N")
 			end
 			audio.dispose
 		end

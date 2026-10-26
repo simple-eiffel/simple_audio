@@ -2,6 +2,16 @@
 
 All notable changes to simple_audio.
 
+## 1.1.2 - 2026-10-26
+
+### Changed
+- Dropped the ISE `wel` library from `simple_audio.ecf`. It was listed from the
+  first commit, but no class ever used it; the clean build links without it.
+  simple_audio depends only on EiffelBase and simple_file.
+- Zero compiler warnings: six test `print` lines use `{STRING_32}` literals
+  (obsolete `as_string_8`).
+- 22 pass.
+
 ## 1.1.1 - 2026-10-25
 
 ### Fixed (design scan 21, since 3ed644f)

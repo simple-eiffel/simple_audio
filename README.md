@@ -192,7 +192,6 @@ set SIMPLE_EIFFEL=D:\prod
 - EiffelBase (for MANAGED_POINTER)
 - ole32.lib, uuid.lib (Windows system libraries, linked automatically)
 - mfplat.lib, mfreadwrite.lib, mfuuid.lib (Media Foundation, linked by `audio_mf.h`; Windows 7 or later)
-- ISE `wel` (still; against the simple_* rule - noted in the CHANGELOG)
 
 ## API Reference
 

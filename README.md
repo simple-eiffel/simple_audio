@@ -119,7 +119,8 @@ end
 
 `AUDIO_DECODER` reads whatever Windows decodes (MP3, AAC/M4A, WMA, WAV)
 through Media Foundation, a chunk at a time; `AUDIO_FILE_PLAYER` streams it,
-with `pause`, `seek`, `volume`, `position_seconds` and `on_finished`.
+with `pause`, `seek` (which drops what the device still holds), `volume`,
+`position_seconds`, `on_finished` and `last_error` (1.1.1).
 
 ## Audio Recording
 

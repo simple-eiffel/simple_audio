@@ -11,13 +11,13 @@
 [![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
 [![Windows](https://img.shields.io/badge/Platform-Windows-blue.svg)]()
 
-Real-time audio I/O library for Eiffel using Windows Audio Session API (WASAPI).
+Real-time audio I/O library for Eiffel: WASAPI on Windows, Core Audio on macOS.
 
 Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 ## Status
 
-**Development** - Windows-only, WASAPI shared mode
+**Development** - Windows (WASAPI shared mode) and macOS (Core Audio); Linux in progress
 
 ## Overview
 

@@ -311,17 +311,17 @@ feature {NONE} -- Implementation
 	sleep_ms (a_ms: INTEGER)
 			-- Sleep for milliseconds.
 		external
-			"C inline use <windows.h>"
+			"C inline use %"audio_bridge.h%""
 		alias
-			"Sleep((DWORD)$a_ms);"
+			"audio_sleep_ms ((int) $a_ms);"
 		end
 
 	current_time_ms: REAL_64
 			-- Current time in milliseconds.
 		external
-			"C inline use <windows.h>"
+			"C inline use %"audio_bridge.h%""
 		alias
-			"return (EIF_REAL_64)GetTickCount64();"
+			"return (EIF_REAL_64) audio_now_ms ();"
 		end
 
 invariant

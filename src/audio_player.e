@@ -335,9 +335,9 @@ feature {NONE} -- Implementation
 	sleep_ms (a_ms: INTEGER)
 			-- Sleep for milliseconds.
 		external
-			"C inline use <windows.h>"
+			"C inline use %"audio_bridge.h%""
 		alias
-			"Sleep((DWORD)$a_ms);"
+			"audio_sleep_ms ((int) $a_ms);"
 		end
 
 invariant

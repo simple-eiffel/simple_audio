@@ -41,8 +41,9 @@ typedef struct {
     int flow;
 } AudioMacDevice;
 
-/* Non-NULL once started: SIMPLE_AUDIO's `is_initialized' reads it. */
-static void* g_enumerator = NULL;
+/* Non-NULL once started: SIMPLE_AUDIO's `is_initialized' reads it. Weak, so every
+   generated C file that includes this header shares one, not a copy of its own. */
+__attribute__((weak)) void* g_enumerator = NULL;
 
 static int audio_init(void) {
     g_enumerator = (void*) &g_enumerator;

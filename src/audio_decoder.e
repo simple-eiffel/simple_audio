@@ -71,7 +71,7 @@ feature -- Operations
 				duration_seconds := l_duration / 1.0e7
 				Result := True
 			else
-				last_error := {STRING_32} "Windows cannot decode " + a_path.to_string_32
+				last_error := {STRING_32} "Cannot decode " + a_path.to_string_32
 			end
 		ensure
 			open_when_true: Result = is_open

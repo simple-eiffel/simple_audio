@@ -20,6 +20,12 @@
 #ifndef AUDIO_MF_H
 #define AUDIO_MF_H
 
+#if defined(__APPLE__)
+#include "audio_mf_mac.h"
+#elif !defined(_WIN32) && !defined(EIF_WINDOWS)
+#include "audio_bridge_none.h"
+#else
+
 #ifndef COBJMACROS
 #define COBJMACROS
 #endif
@@ -230,5 +236,7 @@ static void audio_mf_close(void* l_handle) {
     free(l_d->pending);
     free(l_d);
 }
+
+#endif /* platform */
 
 #endif

@@ -1,7 +1,9 @@
 /*
  * audio_bridge.h - WASAPI bridge for simple_audio
  *
- * Provides Windows Audio Session API access for Eiffel.
+ * Provides Windows Audio Session API access for Eiffel. macOS has the same
+ * calls on Core Audio in audio_bridge_mac.h; elsewhere audio_bridge_none.h
+ * reports no devices until a backend exists.
  * Uses Eric Bezault inline C pattern.
  *
  * Extended for full spec compliance:
@@ -11,6 +13,8 @@
 
 #ifndef AUDIO_BRIDGE_H
 #define AUDIO_BRIDGE_H
+
+#if defined(_WIN32) || defined(EIF_WINDOWS)
 
 #include <windows.h>
 
@@ -610,5 +614,31 @@ static void audio_stream_destroy(void* stream_ptr) {
     free(stream->format);
     free(stream);
 }
+
+#elif defined(__APPLE__)
+#include "audio_bridge_mac.h"
+#else
+#include "audio_bridge_none.h"
+#endif
+
+/* The same everywhere: a wait and a millisecond clock. */
+#if defined(_WIN32) || defined(EIF_WINDOWS)
+static void audio_sleep_ms(int a_ms) { Sleep((DWORD) a_ms); }
+static double audio_now_ms(void) { return (double) GetTickCount64(); }
+#else
+#include <errno.h>
+#include <time.h>
+static void audio_sleep_ms(int a_ms) {
+    struct timespec l_left;
+    l_left.tv_sec = a_ms / 1000;
+    l_left.tv_nsec = (long) (a_ms % 1000) * 1000000L;
+    while (nanosleep(&l_left, &l_left) != 0 && errno == EINTR) { }
+}
+static double audio_now_ms(void) {
+    struct timespec l_now;
+    clock_gettime(CLOCK_MONOTONIC, &l_now);
+    return (double) l_now.tv_sec * 1000.0 + (double) (l_now.tv_nsec / 1000000);
+}
+#endif
 
 #endif /* AUDIO_BRIDGE_H */

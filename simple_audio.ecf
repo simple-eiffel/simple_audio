@@ -21,7 +21,7 @@
 		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf"/>
 		<library name="simple_file" location="$SIMPLE_EIFFEL/simple_file/simple_file.ecf"/>
 		<cluster name="src" location="./src/" recursive="true"/>
-		<external_include location="$SIMPLE_EIFFEL/simple_audio/Clib">
+		<external_include location="$(SIMPLE_EIFFEL)/simple_audio/Clib">
 			<description>Local C bridge header</description>
 		</external_include>
 		<external_library location="ole32.lib">
@@ -34,6 +34,11 @@
 				<platform value="windows"/>
 			</condition>
 		</external_library>
+		<external_linker_flag value="-framework CoreAudio -framework AudioToolbox -framework CoreFoundation">
+			<condition>
+				<platform value="macintosh"/>
+			</condition>
+		</external_linker_flag>
 	</target>
 	<target name="simple_audio_tests" extends="simple_audio">
 		<root class="TEST_APP" feature="make"/>

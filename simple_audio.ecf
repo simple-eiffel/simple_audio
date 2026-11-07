@@ -39,6 +39,11 @@
 				<platform value="macintosh"/>
 			</condition>
 		</external_linker_flag>
+		<external_linker_flag value="-lpulse -lm">
+			<condition>
+				<platform value="unix"/>
+			</condition>
+		</external_linker_flag>
 	</target>
 	<target name="simple_audio_tests" extends="simple_audio">
 		<root class="TEST_APP" feature="make"/>

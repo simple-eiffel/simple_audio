@@ -22,6 +22,8 @@
 
 #if defined(__APPLE__)
 #include "audio_mf_mac.h"
+#elif defined(__linux__)
+#include "audio_mf_linux.h"
 #elif !defined(_WIN32) && !defined(EIF_WINDOWS)
 #include "audio_bridge_none.h"
 #else

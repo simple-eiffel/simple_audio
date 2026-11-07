@@ -617,6 +617,8 @@ static void audio_stream_destroy(void* stream_ptr) {
 
 #elif defined(__APPLE__)
 #include "audio_bridge_mac.h"
+#elif defined(__linux__)
+#include "audio_bridge_linux.h"
 #else
 #include "audio_bridge_none.h"
 #endif

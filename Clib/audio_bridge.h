@@ -79,6 +79,15 @@ DEFINE_GUID(IID_IAudioMeterInformation_Local, 0xC02216F6, 0x8C67, 0x4B5B, 0x9D, 
 /* Static enumerator (one per process) */
 static IMMDeviceEnumerator* g_enumerator = NULL;
 
+/* COM and the enumerator are held for the life of the process, never given back.
+   - COM references belong to a THREAD, but `audio_cleanup' runs from `dispose', which the
+     collector may run on another thread (SCOOP); a CoUninitialize there would take a
+     reference that thread never took - possibly the GUI thread's - and tear COM down under
+     whoever owns it (simple_shell's spell checker crashed exactly so).
+   - The enumerator is shared by every SIMPLE_AUDIO, so one instance's dispose must not
+     release it under the others.
+   The same choice simple_shell's spell checker makes. */
+
 /* Initialize COM and get enumerator */
 static int audio_init(void) {
     HRESULT hr;
@@ -99,13 +108,8 @@ static int audio_init(void) {
     return SUCCEEDED(hr) ? 1 : 0;
 }
 
-/* Cleanup */
+/* Cleanup: nothing to give back - see above. Kept so callers need not change. */
 static void audio_cleanup(void) {
-    if (g_enumerator) {
-        g_enumerator->lpVtbl->Release(g_enumerator);
-        g_enumerator = NULL;
-    }
-    CoUninitialize();
 }
 
 /* Count audio devices */

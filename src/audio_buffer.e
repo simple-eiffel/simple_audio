@@ -444,7 +444,7 @@ feature {NONE} -- Math
 	sine (x: REAL_64): REAL_64
 			-- Sine function.
 		external
-			"C inline"
+			"C inline use <math.h>"
 		alias
 			"return (EIF_REAL_64)sin((double)$x);"
 		end

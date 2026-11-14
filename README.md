@@ -11,17 +11,17 @@
 [![Design by Contract](https://img.shields.io/badge/DbC-enforced-orange.svg)]()
 ![Windows: tests pass](https://img.shields.io/badge/Windows-tests%20pass-0078D6?logo=windows&logoColor=white) ![Linux: tests pass](https://img.shields.io/badge/Linux-tests%20pass-FCC624?logo=linux&logoColor=black) ![macOS: tests pass](https://img.shields.io/badge/macOS-tests%20pass-000000?logo=apple&logoColor=white)
 
-Real-time audio I/O library for Eiffel: WASAPI on Windows, Core Audio on macOS.
+Real-time audio I/O library for Eiffel: WASAPI on Windows, Core Audio on macOS, PulseAudio on Linux.
 
 Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 ## Status
 
-**Development** - Windows (WASAPI shared mode) and macOS (Core Audio); Linux in progress
+**Development** - Windows (WASAPI shared mode), macOS (Core Audio) and Linux (PulseAudio/PipeWire)
 
 ## Overview
 
-SIMPLE_AUDIO provides low-latency audio playback and recording using WASAPI. Features include:
+SIMPLE_AUDIO provides low-latency audio playback and recording using the system audio API (WASAPI, Core Audio or PulseAudio). Features include:
 
 - **Device enumeration** - List input/output devices with names and IDs
 - **Stream creation** - Create playback or recording streams
@@ -29,7 +29,7 @@ SIMPLE_AUDIO provides low-latency audio playback and recording using WASAPI. Fea
 - **WAV file loading** - Load audio from WAV files (PCM format)
 - **Sine wave generation** - Built-in test signal generation
 
-Uses inline C externals - no external DLLs required.
+Uses inline C externals - no external DLLs required. Linux builds need the PulseAudio client headers (`libpulse-dev`).
 
 ## Quick Start
 
@@ -117,8 +117,9 @@ do
 end
 ```
 
-`AUDIO_DECODER` reads whatever Windows decodes (MP3, AAC/M4A, WMA, WAV)
-through Media Foundation, a chunk at a time; `AUDIO_FILE_PLAYER` streams it,
+`AUDIO_DECODER` reads a file a chunk at a time: on Windows, whatever Media
+Foundation decodes (MP3, AAC/M4A, WMA, WAV); on macOS, the formats Core Audio
+reads (through ExtAudioFile); on Linux, WAV and MP3 only; `AUDIO_FILE_PLAYER` streams it,
 with `pause`, `seek` (which drops what the device still holds), `volume`,
 `position_seconds`, `on_finished` and `last_error` (1.1.1).
 
@@ -180,6 +181,10 @@ end
 ```batch
 set SIMPLE_EIFFEL=D:\prod
 ```
+On macOS or Linux:
+```bash
+export SIMPLE_EIFFEL=$HOME/simple_eiffel
+```
 
 2. Add to your ECF file:
 ```xml
@@ -192,6 +197,8 @@ set SIMPLE_EIFFEL=D:\prod
 - EiffelBase (for MANAGED_POINTER)
 - ole32.lib, uuid.lib (Windows system libraries, linked automatically)
 - mfplat.lib, mfreadwrite.lib, mfuuid.lib (Media Foundation, linked by `audio_mf.h`; Windows 7 or later)
+- macOS: CoreAudio, AudioToolbox and CoreFoundation frameworks (linked automatically)
+- Linux: libpulse (install `libpulse-dev` to build)
 
 ## API Reference
 
@@ -236,7 +243,7 @@ set SIMPLE_EIFFEL=D:\prod
 
 | Method | Description |
 |--------|-------------|
-| `open (path)` | Open a file Windows can decode; True on success |
+| `open (path)` | Open a file the system can decode; True on success |
 | `read_chunk (max_frames)` | The next 16-bit PCM chunk; Void at the end |
 | `seek (seconds)` | Continue from there |
 | `position_seconds`, `duration_seconds` | Where, and how long |
@@ -274,13 +281,15 @@ set SIMPLE_EIFFEL=D:\prod
 - **Channels**: 1-8 (mono, stereo, surround)
 - **Bit depths**: 8, 16, 24, 32 (PCM)
 - **WAV files**: PCM format only (no compression)
-- **Compressed files** (1.1.0): MP3, AAC/M4A, WMA and anything else Windows decodes, through `AUDIO_DECODER`
+- **Compressed files** (1.1.0): MP3, AAC/M4A, WMA and anything else Windows or macOS decodes; WAV and MP3 on Linux; through `AUDIO_DECODER`
 
 ## Platform Support
 
-Currently Windows-only. Uses:
-- WASAPI (Windows Audio Session API)
-- Shared mode (lower latency, device sharing)
+- **Windows**: WASAPI (Windows Audio Session API), shared mode (lower latency, device sharing)
+- **macOS**: Core Audio. Volume and mute read 0 on devices without those controls.
+- **Linux**: PulseAudio (PipeWire works through it). No devices are listed without a running sound server.
+
+Peak level reads 0 on macOS and Linux.
 
 ## License
 

@@ -155,6 +155,18 @@
                 <tr><td><code>clear</code></td><td>Zero buffer</td></tr>
             </table>
         </section>
+
+        <section id="platforms">
+            <h2>Platforms</h2>
+            <p>Tested on Windows, Linux and macOS (see the README's badges).</p>
+            <ul>
+                <li><strong>Windows</strong>: WASAPI (Windows Audio Session API), shared mode (lower latency, device sharing)</li>
+                <li><strong>macOS</strong>: Core Audio. Volume and mute read 0 on devices without those controls.</li>
+                <li><strong>Linux</strong>: PulseAudio (PipeWire works through it). No devices are listed without a running sound server.</li>
+            </ul>
+            <p>Peak level reads 0 on macOS and Linux.</p>
+        </section>
+
     </main>
 
     <footer>
